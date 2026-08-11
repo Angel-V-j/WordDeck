@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">WordDeck</string>
+    <string name="architecture_skeleton_message">Architecture skeleton</string>
+</resources>
