@@ -1,0 +1,51 @@
+# Gradle and Kotlin generated files
+.gradle/
+.kotlin/
+/build/
+**/build/
+
+# Local machine configuration
+local.properties
+
+# Android Studio and IntelliJ IDEA
+.idea/
+*.iml
+out/
+
+# Android and native build output
+captures/
+**/.externalNativeBuild/
+**/.cxx/
+*.apk
+*.aab
+*.apks
+
+# Signing material, secrets, and local environment files
+*.jks
+*.keystore
+keystore.properties
+secrets.properties
+.env
+.env.*
+!.env.example
+
+# Firebase local configuration and emulator output
+google-services.json
+**/google-services.json
+service-account*.json
+firebase-adminsdk-*.json
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+firestore-debug.log
+ui-debug.log
+
+# JVM crash and memory dump files
+hs_err_pid*
+replay_pid*
+*.hprof
+
+# Operating-system files
+.DS_Store
+Thumbs.db
+Desktop.ini
