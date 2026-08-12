@@ -9,6 +9,7 @@ import com.worddeck.domain.model.DeckCategory
 import com.worddeck.domain.model.DeckId
 import com.worddeck.domain.model.DeckLanguage
 import com.worddeck.domain.model.DeckTitle
+import com.worddeck.domain.model.DeckVisibility
 import com.worddeck.domain.model.CardId
 import com.worddeck.domain.model.Flashcard
 import com.worddeck.domain.model.User
@@ -94,6 +95,7 @@ private fun createDeck(): Deck = Deck(
     sourceLanguage = DeckLanguage.from("English").successValue(),
     targetLanguage = DeckLanguage.from("Spanish").successValue(),
     category = DeckCategory.from("Vocabulary").successValue(),
+    visibility = DeckVisibility.PRIVATE,
     createdAt = Timestamp(1_000),
     updatedAt = Timestamp(1_000),
 )

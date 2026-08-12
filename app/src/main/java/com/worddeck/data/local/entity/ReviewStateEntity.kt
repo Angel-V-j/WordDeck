@@ -2,10 +2,11 @@ package com.worddeck.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.ForeignKey
-import androidx.room.PrimaryKey
+import androidx.room.Index
 
 @Entity(
     tableName = "review_states",
+    primaryKeys = ["userId", "cardId"],
     foreignKeys = [
         ForeignKey(
             entity = FlashcardEntity::class,
@@ -14,9 +15,14 @@ import androidx.room.PrimaryKey
             onDelete = ForeignKey.CASCADE,
         ),
     ],
+    indices = [
+        Index(value = ["cardId"]),
+        Index(value = ["userId", "nextReviewAt"]),
+    ],
 )
 data class ReviewStateEntity(
-    @PrimaryKey val cardId: String,
+    val userId: String,
+    val cardId: String,
     val repetition: Int,
     val easeFactor: Double,
     val intervalDays: Int,

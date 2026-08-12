@@ -1,7 +1,6 @@
 package com.worddeck.data.local.dao
 
 import androidx.room.Dao
-import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
@@ -16,17 +15,11 @@ interface DeckDao {
     @Update
     suspend fun update(deck: DeckEntity): Int
 
-    @Delete
-    suspend fun delete(deck: DeckEntity): Int
+    @Query("DELETE FROM decks WHERE id = :id")
+    suspend fun deleteById(id: String): Int
 
-    @Query(
-        """
-        SELECT * FROM decks
-        WHERE id = :id AND ownerId = :ownerId
-        LIMIT 1
-        """,
-    )
-    suspend fun findById(id: String, ownerId: String): DeckEntity?
+    @Query("SELECT * FROM decks WHERE id = :id LIMIT 1")
+    suspend fun findById(id: String): DeckEntity?
 
     @Query(
         """

@@ -19,6 +19,7 @@ enum class MasteryLevel {
 }
 
 data class ReviewState(
+    val userId: UserId,
     val cardId: CardId,
     val repetition: Int,
     val easeFactor: Double,

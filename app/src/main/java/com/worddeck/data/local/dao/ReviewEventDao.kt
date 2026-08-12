@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
 import com.worddeck.data.local.entity.ReviewEventEntity
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ReviewEventDao {
@@ -14,8 +15,9 @@ interface ReviewEventDao {
         """
         SELECT * FROM review_events
         WHERE cardId = :cardId
-        ORDER BY reviewedAt, id
+          AND userId = :userId
+        ORDER BY reviewedAt DESC, id DESC
         """,
     )
-    suspend fun findByCardId(cardId: String): List<ReviewEventEntity>
+    fun observeByUserAndCard(userId: String, cardId: String): Flow<List<ReviewEventEntity>>
 }

@@ -16,12 +16,14 @@ import androidx.room.PrimaryKey
         ),
     ],
     indices = [
-        Index(value = ["cardId", "reviewedAt"]),
-        Index(value = ["reviewedAt"]),
+        Index(value = ["cardId"]),
+        Index(value = ["userId", "cardId", "reviewedAt"]),
+        Index(value = ["userId", "reviewedAt"]),
     ],
 )
 data class ReviewEventEntity(
     @PrimaryKey val id: String,
+    val userId: String,
     val cardId: String,
     val quality: Int,
     val reviewedAt: Long,

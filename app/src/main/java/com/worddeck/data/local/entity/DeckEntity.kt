@@ -15,6 +15,7 @@ data class DeckEntity(
     val sourceLanguage: String?,
     val targetLanguage: String?,
     val category: String?,
+    val visibility: String,
     val createdAt: Long,
     val updatedAt: Long,
 )
