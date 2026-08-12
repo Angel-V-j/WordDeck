@@ -14,6 +14,8 @@ import kotlinx.coroutines.launch
 sealed interface HomeUiState {
     data object Loading : HomeUiState
 
+    data object Empty : HomeUiState
+
     data class Content(val decks: List<Deck>) : HomeUiState
 
     data class Error(val cause: AppError) : HomeUiState
@@ -30,7 +32,11 @@ class HomeViewModel(
         viewModelScope.launch {
             deckRepository.observeByOwner(ownerId).collect { result ->
                 _uiState.value = when (result) {
-                    is AppResult.Success -> HomeUiState.Content(result.value)
+                    is AppResult.Success -> if (result.value.isEmpty()) {
+                        HomeUiState.Empty
+                    } else {
+                        HomeUiState.Content(result.value)
+                    }
                     is AppResult.Failure -> HomeUiState.Error(result.error)
                 }
             }

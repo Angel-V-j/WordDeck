@@ -4,8 +4,10 @@ import com.worddeck.common.AppError
 import com.worddeck.common.AppResult
 import com.worddeck.core.AppContainer
 import com.worddeck.domain.model.Deck
+import com.worddeck.domain.model.DeckId
 import com.worddeck.domain.model.Flashcard
 import com.worddeck.domain.model.User
+import com.worddeck.domain.model.UserId
 import com.worddeck.domain.repository.AuthenticationRepository
 import com.worddeck.domain.repository.DeckRepository
 import com.worddeck.domain.repository.FlashcardRepository
@@ -25,8 +27,19 @@ class HomeViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     @Test
-    fun `uses fake repository supplied by app container independently of Compose UI`() = runTest {
-        val repository = FakeDeckRepository(decks = emptyList())
+    fun `starts in loading state before repository result is collected`() = runTest {
+        val viewModel = HomeViewModel(
+            deckRepository = FakeDeckRepository(AppResult.Success(emptyList())),
+            ownerId = "user-1",
+        )
+
+        assertEquals(HomeUiState.Loading, viewModel.uiState.value)
+    }
+
+    @Test
+    fun `uses fake repository from app container and exposes content`() = runTest {
+        val decks = listOf(createDeck())
+        val repository = FakeDeckRepository(AppResult.Success(decks))
         val appContainer = AppContainer(
             authenticationRepository = UnusedAuthenticationRepository,
             deckRepository = repository,
@@ -40,9 +53,42 @@ class HomeViewModelTest {
         advanceUntilIdle()
 
         assertEquals("user-1", repository.observedOwnerId)
-        assertEquals(HomeUiState.Content(emptyList()), viewModel.uiState.value)
+        assertEquals(HomeUiState.Content(decks), viewModel.uiState.value)
+    }
+
+    @Test
+    fun `exposes empty state when repository returns no decks`() = runTest {
+        val viewModel = HomeViewModel(
+            deckRepository = FakeDeckRepository(AppResult.Success(emptyList())),
+            ownerId = "user-1",
+        )
+
+        advanceUntilIdle()
+
+        assertEquals(HomeUiState.Empty, viewModel.uiState.value)
+    }
+
+    @Test
+    fun `exposes error state when repository fails`() = runTest {
+        val error = AppError.Unavailable("decks")
+        val viewModel = HomeViewModel(
+            deckRepository = FakeDeckRepository(AppResult.Failure(error)),
+            ownerId = "user-1",
+        )
+
+        advanceUntilIdle()
+
+        assertEquals(HomeUiState.Error(error), viewModel.uiState.value)
     }
 }
+
+private fun createDeck(): Deck = Deck(
+    id = DeckId.from("deck-1").successValue(),
+    ownerId = UserId.from("user-1").successValue(),
+    title = "Spanish basics",
+)
+
+private fun <T> AppResult<T>.successValue(): T = (this as AppResult.Success).value
 
 private object UnusedAuthenticationRepository : AuthenticationRepository {
     override fun observeCurrentUser(): Flow<AppResult<User?>> = unusedDependency()
@@ -67,14 +113,14 @@ private object UnusedFlashcardRepository : FlashcardRepository {
 private fun unusedDependency(): Nothing = error("This dependency is not used by HomeViewModel")
 
 private class FakeDeckRepository(
-    private val decks: List<Deck>,
+    private val observedResult: AppResult<List<Deck>>,
 ) : DeckRepository {
     var observedOwnerId: String? = null
         private set
 
     override fun observeByOwner(ownerId: String): Flow<AppResult<List<Deck>>> {
         observedOwnerId = ownerId
-        return flowOf(AppResult.Success(decks))
+        return flowOf(observedResult)
     }
 
     override suspend fun findById(id: String): AppResult<Deck?> =
