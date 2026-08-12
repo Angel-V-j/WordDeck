@@ -2,6 +2,7 @@ package com.worddeck.feature.home
 
 import com.worddeck.common.AppError
 import com.worddeck.common.AppResult
+import com.worddeck.core.AppContainer
 import com.worddeck.domain.model.Deck
 import com.worddeck.domain.repository.DeckRepository
 import com.worddeck.testing.MainDispatcherRule
@@ -20,10 +21,11 @@ class HomeViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     @Test
-    fun `loads decks from repository independently of Compose UI`() = runTest {
+    fun `uses fake repository supplied by app container independently of Compose UI`() = runTest {
         val repository = FakeDeckRepository(decks = emptyList())
+        val appContainer = AppContainer(deckRepository = repository)
         val viewModel = HomeViewModel(
-            deckRepository = repository,
+            deckRepository = appContainer.deckRepository,
             ownerId = "user-1",
         )
 
