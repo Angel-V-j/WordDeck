@@ -1,7 +1,7 @@
 package com.worddeck.domain.model
 
-import com.worddeck.core.AppError
-import com.worddeck.core.AppResult
+import com.worddeck.common.AppError
+import com.worddeck.common.AppResult
 
 @JvmInline
 value class UserId private constructor(val value: String) {

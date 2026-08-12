@@ -1,4 +1,4 @@
-package com.worddeck.core
+package com.worddeck.common
 
 sealed interface AppResult<out T> {
     data class Success<T>(val value: T) : AppResult<T>

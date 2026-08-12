@@ -1,6 +1,6 @@
 package com.worddeck.domain.repository
 
-import com.worddeck.core.AppResult
+import com.worddeck.common.AppResult
 import com.worddeck.domain.model.Flashcard
 import kotlinx.coroutines.flow.Flow
 
