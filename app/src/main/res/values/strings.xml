@@ -1,4 +1,7 @@
 <resources>
     <string name="app_name">WordDeck</string>
     <string name="architecture_skeleton_message">Architecture skeleton</string>
+    <string name="login_title">Login</string>
+    <string name="register_title">Register</string>
+    <string name="authentication_placeholder_message">Authentication will be implemented later</string>
 </resources>
