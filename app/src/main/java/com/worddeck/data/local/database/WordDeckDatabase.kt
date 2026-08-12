@@ -1,6 +1,8 @@
 package com.worddeck.data.local.database
 
+import android.content.Context
 import androidx.room.Database
+import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.worddeck.data.local.dao.DeckDao
 import com.worddeck.data.local.dao.FlashcardDao
@@ -29,4 +31,15 @@ abstract class WordDeckDatabase : RoomDatabase() {
     abstract fun reviewStateDao(): ReviewStateDao
 
     abstract fun reviewEventDao(): ReviewEventDao
+
+    companion object {
+        private const val DATABASE_NAME = "worddeck.db"
+
+        fun create(context: Context): WordDeckDatabase =
+            Room.databaseBuilder(
+                context.applicationContext,
+                WordDeckDatabase::class.java,
+                DATABASE_NAME,
+            ).build()
+    }
 }
