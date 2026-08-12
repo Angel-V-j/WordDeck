@@ -23,4 +23,7 @@ data class ReviewStateEntity(
     val lastReviewedAt: Long?,
     val lastQuality: Int?,
     val nextReviewAt: Long,
+    val successfulReviewCount: Int,
+    val failedReviewCount: Int,
+    val masteryLevel: String,
 )

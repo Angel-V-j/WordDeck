@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "089e62bc97bf569f8fd04241128fdc98",
+    "identityHash": "4454d5f70d557370535bed7a19ea02e0",
     "entities": [
       {
         "tableName": "users",
@@ -186,7 +186,7 @@
       },
       {
         "tableName": "review_states",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`cardId` TEXT NOT NULL, `repetition` INTEGER NOT NULL, `easeFactor` REAL NOT NULL, `intervalDays` INTEGER NOT NULL, `lastReviewedAt` INTEGER, `lastQuality` INTEGER, `nextReviewAt` INTEGER NOT NULL, PRIMARY KEY(`cardId`), FOREIGN KEY(`cardId`) REFERENCES `flashcards`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`cardId` TEXT NOT NULL, `repetition` INTEGER NOT NULL, `easeFactor` REAL NOT NULL, `intervalDays` INTEGER NOT NULL, `lastReviewedAt` INTEGER, `lastQuality` INTEGER, `nextReviewAt` INTEGER NOT NULL, `successfulReviewCount` INTEGER NOT NULL, `failedReviewCount` INTEGER NOT NULL, `masteryLevel` TEXT NOT NULL, PRIMARY KEY(`cardId`), FOREIGN KEY(`cardId`) REFERENCES `flashcards`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "cardId",
@@ -226,6 +226,24 @@
             "fieldPath": "nextReviewAt",
             "columnName": "nextReviewAt",
             "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "successfulReviewCount",
+            "columnName": "successfulReviewCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "failedReviewCount",
+            "columnName": "failedReviewCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "masteryLevel",
+            "columnName": "masteryLevel",
+            "affinity": "TEXT",
             "notNull": true
           }
         ],
@@ -322,7 +340,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '089e62bc97bf569f8fd04241128fdc98')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '4454d5f70d557370535bed7a19ea02e0')"
     ]
   }
 }
