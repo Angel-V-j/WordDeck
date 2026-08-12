@@ -15,10 +15,7 @@ import androidx.room.Index
             onDelete = ForeignKey.CASCADE,
         ),
     ],
-    indices = [
-        Index(value = ["cardId"]),
-        Index(value = ["userId", "nextReviewAt"]),
-    ],
+    indices = [Index(value = ["cardId"])],
 )
 data class ReviewStateEntity(
     val userId: String,

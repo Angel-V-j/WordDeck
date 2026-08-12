@@ -2,38 +2,8 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "f40694d9a8bf12579e7076002d1931b7",
+    "identityHash": "b9d92f27f0e86bdff92ed19eded05777",
     "entities": [
-      {
-        "tableName": "users",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `email` TEXT NOT NULL, `displayName` TEXT NOT NULL, PRIMARY KEY(`id`))",
-        "fields": [
-          {
-            "fieldPath": "id",
-            "columnName": "id",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "email",
-            "columnName": "email",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "displayName",
-            "columnName": "displayName",
-            "affinity": "TEXT",
-            "notNull": true
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": false,
-          "columnNames": [
-            "id"
-          ]
-        }
-      },
       {
         "tableName": "decks",
         "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `ownerId` TEXT NOT NULL, `title` TEXT NOT NULL, `sourceLanguage` TEXT, `targetLanguage` TEXT, `category` TEXT, `visibility` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))",
@@ -275,16 +245,6 @@
             ],
             "orders": [],
             "createSql": "CREATE INDEX IF NOT EXISTS `index_review_states_cardId` ON `${TABLE_NAME}` (`cardId`)"
-          },
-          {
-            "name": "index_review_states_userId_nextReviewAt",
-            "unique": false,
-            "columnNames": [
-              "userId",
-              "nextReviewAt"
-            ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_review_states_userId_nextReviewAt` ON `${TABLE_NAME}` (`userId`, `nextReviewAt`)"
           }
         ],
         "foreignKeys": [
@@ -362,16 +322,6 @@
             ],
             "orders": [],
             "createSql": "CREATE INDEX IF NOT EXISTS `index_review_events_userId_cardId_reviewedAt` ON `${TABLE_NAME}` (`userId`, `cardId`, `reviewedAt`)"
-          },
-          {
-            "name": "index_review_events_userId_reviewedAt",
-            "unique": false,
-            "columnNames": [
-              "userId",
-              "reviewedAt"
-            ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_review_events_userId_reviewedAt` ON `${TABLE_NAME}` (`userId`, `reviewedAt`)"
           }
         ],
         "foreignKeys": [
@@ -391,7 +341,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'f40694d9a8bf12579e7076002d1931b7')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'b9d92f27f0e86bdff92ed19eded05777')"
     ]
   }
 }

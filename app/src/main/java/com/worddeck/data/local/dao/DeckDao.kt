@@ -1,19 +1,15 @@
 package com.worddeck.data.local.dao
 
 import androidx.room.Dao
-import androidx.room.Insert
 import androidx.room.Query
-import androidx.room.Update
+import androidx.room.Upsert
 import com.worddeck.data.local.entity.DeckEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface DeckDao {
-    @Insert
-    suspend fun insert(deck: DeckEntity)
-
-    @Update
-    suspend fun update(deck: DeckEntity): Int
+    @Upsert
+    suspend fun save(deck: DeckEntity)
 
     @Query("DELETE FROM decks WHERE id = :id")
     suspend fun deleteById(id: String): Int

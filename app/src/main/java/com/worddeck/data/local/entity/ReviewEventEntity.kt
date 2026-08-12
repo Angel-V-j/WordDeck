@@ -18,7 +18,6 @@ import androidx.room.PrimaryKey
     indices = [
         Index(value = ["cardId"]),
         Index(value = ["userId", "cardId", "reviewedAt"]),
-        Index(value = ["userId", "reviewedAt"]),
     ],
 )
 data class ReviewEventEntity(

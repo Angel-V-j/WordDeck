@@ -10,11 +10,9 @@ import com.worddeck.data.local.entity.DeckEntity
 import com.worddeck.data.local.entity.FlashcardEntity
 import com.worddeck.data.local.entity.ReviewEventEntity
 import com.worddeck.data.local.entity.ReviewStateEntity
-import com.worddeck.data.local.entity.UserEntity
 
 @Database(
     entities = [
-        UserEntity::class,
         DeckEntity::class,
         FlashcardEntity::class,
         ReviewStateEntity::class,
