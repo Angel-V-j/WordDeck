@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.worddeck.common.AppError
 import com.worddeck.common.AppResult
 import com.worddeck.domain.model.Deck
+import com.worddeck.domain.model.UserId
 import com.worddeck.domain.repository.DeckRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,7 +24,7 @@ sealed interface HomeUiState {
 
 class HomeViewModel(
     private val deckRepository: DeckRepository,
-    ownerId: String,
+    ownerId: UserId,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()

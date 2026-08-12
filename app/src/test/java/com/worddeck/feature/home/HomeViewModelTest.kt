@@ -2,9 +2,14 @@ package com.worddeck.feature.home
 
 import com.worddeck.common.AppError
 import com.worddeck.common.AppResult
+import com.worddeck.common.Timestamp
 import com.worddeck.core.AppContainer
 import com.worddeck.domain.model.Deck
+import com.worddeck.domain.model.DeckCategory
 import com.worddeck.domain.model.DeckId
+import com.worddeck.domain.model.DeckLanguage
+import com.worddeck.domain.model.DeckTitle
+import com.worddeck.domain.model.CardId
 import com.worddeck.domain.model.Flashcard
 import com.worddeck.domain.model.User
 import com.worddeck.domain.model.UserId
@@ -30,7 +35,7 @@ class HomeViewModelTest {
     fun `starts in loading state before repository result is collected`() = runTest {
         val viewModel = HomeViewModel(
             deckRepository = FakeDeckRepository(AppResult.Success(emptyList())),
-            ownerId = "user-1",
+            ownerId = userId(),
         )
 
         assertEquals(HomeUiState.Loading, viewModel.uiState.value)
@@ -47,12 +52,12 @@ class HomeViewModelTest {
         )
         val viewModel = HomeViewModel(
             deckRepository = appContainer.deckRepository,
-            ownerId = "user-1",
+            ownerId = userId(),
         )
 
         advanceUntilIdle()
 
-        assertEquals("user-1", repository.observedOwnerId)
+        assertEquals(userId(), repository.observedOwnerId)
         assertEquals(HomeUiState.Content(decks), viewModel.uiState.value)
     }
 
@@ -60,7 +65,7 @@ class HomeViewModelTest {
     fun `exposes empty state when repository returns no decks`() = runTest {
         val viewModel = HomeViewModel(
             deckRepository = FakeDeckRepository(AppResult.Success(emptyList())),
-            ownerId = "user-1",
+            ownerId = userId(),
         )
 
         advanceUntilIdle()
@@ -73,7 +78,7 @@ class HomeViewModelTest {
         val error = AppError.Unavailable("decks")
         val viewModel = HomeViewModel(
             deckRepository = FakeDeckRepository(AppResult.Failure(error)),
-            ownerId = "user-1",
+            ownerId = userId(),
         )
 
         advanceUntilIdle()
@@ -84,9 +89,16 @@ class HomeViewModelTest {
 
 private fun createDeck(): Deck = Deck(
     id = DeckId.from("deck-1").successValue(),
-    ownerId = UserId.from("user-1").successValue(),
-    title = "Spanish basics",
+    ownerId = userId(),
+    title = DeckTitle.from("Spanish basics").successValue(),
+    sourceLanguage = DeckLanguage.from("English").successValue(),
+    targetLanguage = DeckLanguage.from("Spanish").successValue(),
+    category = DeckCategory.from("Vocabulary").successValue(),
+    createdAt = Timestamp(1_000),
+    updatedAt = Timestamp(1_000),
 )
+
+private fun userId(): UserId = UserId.from("user-1").successValue()
 
 private fun <T> AppResult<T>.successValue(): T = (this as AppResult.Success).value
 
@@ -101,13 +113,13 @@ private object UnusedAuthenticationRepository : AuthenticationRepository {
 }
 
 private object UnusedFlashcardRepository : FlashcardRepository {
-    override fun observeByDeck(deckId: String): Flow<AppResult<List<Flashcard>>> = unusedDependency()
+    override fun observeByDeck(deckId: DeckId): Flow<AppResult<List<Flashcard>>> = unusedDependency()
 
-    override suspend fun findById(id: String): AppResult<Flashcard?> = unusedDependency()
+    override suspend fun findById(id: CardId): AppResult<Flashcard?> = unusedDependency()
 
     override suspend fun save(flashcard: Flashcard): AppResult<Unit> = unusedDependency()
 
-    override suspend fun delete(id: String): AppResult<Unit> = unusedDependency()
+    override suspend fun delete(id: CardId): AppResult<Unit> = unusedDependency()
 }
 
 private fun unusedDependency(): Nothing = error("This dependency is not used by HomeViewModel")
@@ -115,20 +127,20 @@ private fun unusedDependency(): Nothing = error("This dependency is not used by 
 private class FakeDeckRepository(
     private val observedResult: AppResult<List<Deck>>,
 ) : DeckRepository {
-    var observedOwnerId: String? = null
+    var observedOwnerId: UserId? = null
         private set
 
-    override fun observeByOwner(ownerId: String): Flow<AppResult<List<Deck>>> {
+    override fun observeByOwner(ownerId: UserId): Flow<AppResult<List<Deck>>> {
         observedOwnerId = ownerId
         return flowOf(observedResult)
     }
 
-    override suspend fun findById(id: String): AppResult<Deck?> =
+    override suspend fun findById(id: DeckId): AppResult<Deck?> =
         AppResult.Failure(AppError.Unavailable("Not used by this test"))
 
     override suspend fun save(deck: Deck): AppResult<Unit> =
         AppResult.Failure(AppError.Unavailable("Not used by this test"))
 
-    override suspend fun delete(id: String): AppResult<Unit> =
+    override suspend fun delete(id: DeckId): AppResult<Unit> =
         AppResult.Failure(AppError.Unavailable("Not used by this test"))
 }
