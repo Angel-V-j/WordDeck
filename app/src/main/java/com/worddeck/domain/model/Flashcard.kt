@@ -4,7 +4,6 @@ import com.worddeck.common.Timestamp
 
 data class Flashcard(
     val id: CardId,
-    val ownerId: UserId,
     val deckId: DeckId,
     val front: CardSide,
     val back: CardSide,
