@@ -116,6 +116,9 @@ private object UnusedAuthenticationRepository : AuthenticationRepository {
 
     override suspend fun login(email: String, password: String): AppResult<User> = unusedDependency()
 
+    override suspend fun updateDisplayName(displayName: DisplayName): AppResult<User> =
+        unusedDependency()
+
     override suspend fun logout(): AppResult<Unit> = unusedDependency()
 }
 

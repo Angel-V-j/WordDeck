@@ -233,6 +233,8 @@ private fun authenticationErrorMessage(error: AppError): String = when (error) {
         stringResource(R.string.invalid_credentials_error)
     AppError.Authentication.EmailAlreadyInUse ->
         stringResource(R.string.email_already_used_error)
+    AppError.Authentication.Unauthenticated ->
+        stringResource(R.string.session_expired_error)
     AppError.NetworkUnavailable -> stringResource(R.string.network_error)
     is AppError.Unavailable -> stringResource(R.string.authentication_unavailable_error)
     is AppError.Validation -> "${error.field}: ${error.reason}"

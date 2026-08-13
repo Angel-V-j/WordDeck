@@ -57,6 +57,13 @@ internal fun FirebaseException.toLoginError(): AppError = when (this) {
     else -> AppError.Unavailable("login")
 }
 
+internal fun FirebaseException.toProfileError(): AppError = when (this) {
+    is FirebaseNetworkException -> AppError.NetworkUnavailable
+    is FirebaseAuthInvalidUserException -> AppError.Authentication.Unauthenticated
+    is FirebaseTooManyRequestsException -> AppError.Unavailable("profile")
+    else -> AppError.Unavailable("profile")
+}
+
 private fun <T> AppResult<T>.successValueOrNull(): T? = when (this) {
     is AppResult.Success -> value
     is AppResult.Failure -> null

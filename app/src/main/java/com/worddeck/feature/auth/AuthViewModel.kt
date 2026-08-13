@@ -100,6 +100,22 @@ class AuthViewModel(
         }
     }
 
+    fun updateDisplayName(displayName: String) {
+        if (_uiState.value.isSubmitting) return
+
+        val displayNameResult = DisplayName.from(displayName)
+        submit(
+            formErrors = AuthFormErrors(
+                displayName = displayNameResult.validationReason(),
+            ),
+            operation = {
+                authenticationRepository.updateDisplayName(
+                    displayNameResult.successValue(),
+                )
+            },
+        )
+    }
+
     fun clearErrors() {
         _uiState.update { it.copy(formErrors = AuthFormErrors(), error = null) }
     }
@@ -132,6 +148,14 @@ class AuthViewModel(
     }
 
     private fun showFailure(error: AppError) {
+        if (error == AppError.Authentication.Unauthenticated) {
+            _uiState.value = AuthUiState(
+                isSessionLoading = false,
+                error = error,
+            )
+            return
+        }
+
         _uiState.update {
             if (error is AppError.Validation) {
                 it.copy(

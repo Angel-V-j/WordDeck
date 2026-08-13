@@ -14,5 +14,6 @@ sealed interface AppError {
     sealed interface Authentication : AppError {
         data object InvalidCredentials : Authentication
         data object EmailAlreadyInUse : Authentication
+        data object Unauthenticated : Authentication
     }
 }

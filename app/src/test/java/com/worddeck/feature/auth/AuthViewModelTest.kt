@@ -138,6 +138,56 @@ class AuthViewModelTest {
         assertEquals(1, repository.logoutCalls)
         assertEquals(null, viewModel.uiState.value.currentUser)
     }
+
+    @Test
+    fun `blank display name is rejected before profile update`() = runTest {
+        val repository = FakeAuthenticationRepository(initialSession = AppResult.Success(user()))
+        val viewModel = AuthViewModel(repository)
+        advanceUntilIdle()
+
+        viewModel.updateDisplayName("   ")
+
+        assertEquals("must not be blank", viewModel.uiState.value.formErrors.displayName)
+        assertEquals(0, repository.updateDisplayNameCalls)
+    }
+
+    @Test
+    fun `profile update replaces current user`() = runTest {
+        val updatedUser = user("Maria Petrova")
+        val repository = FakeAuthenticationRepository(
+            initialSession = AppResult.Success(user()),
+            updateDisplayNameResult = AppResult.Success(updatedUser),
+        )
+        val viewModel = AuthViewModel(repository)
+        advanceUntilIdle()
+
+        viewModel.updateDisplayName("  Maria Petrova  ")
+        advanceUntilIdle()
+
+        assertEquals("Maria Petrova", repository.updatedDisplayName?.value)
+        assertEquals(updatedUser, viewModel.uiState.value.currentUser)
+    }
+
+    @Test
+    fun `unauthenticated profile update returns to signed out state`() = runTest {
+        val repository = FakeAuthenticationRepository(
+            initialSession = AppResult.Success(user()),
+            updateDisplayNameResult = AppResult.Failure(
+                AppError.Authentication.Unauthenticated,
+            ),
+        )
+        val viewModel = AuthViewModel(repository)
+        advanceUntilIdle()
+
+        viewModel.updateDisplayName("Maria Petrova")
+        advanceUntilIdle()
+
+        assertEquals(null, viewModel.uiState.value.currentUser)
+        assertEquals(
+            AppError.Authentication.Unauthenticated,
+            viewModel.uiState.value.error,
+        )
+    }
 }
 
 private class FakeAuthenticationRepository(
@@ -145,6 +195,7 @@ private class FakeAuthenticationRepository(
     private val registerResult: AppResult<User> = AppResult.Success(user()),
     private val loginResult: AppResult<User> = AppResult.Success(user()),
     private val logoutResult: AppResult<Unit> = AppResult.Success(Unit),
+    private val updateDisplayNameResult: AppResult<User> = AppResult.Success(user()),
 ) : AuthenticationRepository {
     private val session = MutableStateFlow(initialSession)
 
@@ -153,6 +204,10 @@ private class FakeAuthenticationRepository(
     var loginCalls = 0
         private set
     var logoutCalls = 0
+        private set
+    var updateDisplayNameCalls = 0
+        private set
+    var updatedDisplayName: DisplayName? = null
         private set
 
     override fun observeCurrentUser(): Flow<AppResult<User?>> = session
@@ -175,12 +230,18 @@ private class FakeAuthenticationRepository(
         logoutCalls += 1
         return logoutResult
     }
+
+    override suspend fun updateDisplayName(displayName: DisplayName): AppResult<User> {
+        updateDisplayNameCalls += 1
+        updatedDisplayName = displayName
+        return updateDisplayNameResult
+    }
 }
 
-private fun user(): User = User(
+private fun user(displayName: String = "Maria"): User = User(
     id = UserId.from("user-1").successValue(),
     email = EmailAddress.from("maria@example.com").successValue(),
-    displayName = DisplayName.from("Maria").successValue(),
+    displayName = DisplayName.from(displayName).successValue(),
 )
 
 private fun <T> AppResult<T>.successValue(): T = (this as AppResult.Success).value

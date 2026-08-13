@@ -87,6 +87,25 @@ internal class FirebaseAuthRepository(
         }
     }
 
+    override suspend fun updateDisplayName(displayName: DisplayName): AppResult<User> {
+        val firebaseUser = firebaseAuth.currentUser
+            ?: return AppResult.Failure(AppError.Authentication.Unauthenticated)
+
+        return try {
+            firebaseUser.updateProfile(
+                UserProfileChangeRequest.Builder()
+                    .setDisplayName(displayName.value)
+                    .build(),
+            ).await()
+
+            firebaseUser.toDomainUser()
+                ?.let { AppResult.Success(it) }
+                ?: unavailable("profile")
+        } catch (exception: FirebaseException) {
+            AppResult.Failure(exception.toProfileError())
+        }
+    }
+
     override suspend fun logout(): AppResult<Unit> {
         firebaseAuth.signOut()
         return AppResult.Success(Unit)

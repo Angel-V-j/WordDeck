@@ -30,6 +30,7 @@ fun WordDeckContent(authViewModel: AuthViewModel) {
                 uiState = uiState,
                 onLogin = authViewModel::login,
                 onRegister = authViewModel::register,
+                onUpdateDisplayName = authViewModel::updateDisplayName,
                 onLogout = authViewModel::logout,
                 onClearErrors = authViewModel::clearErrors,
                 modifier = Modifier.fillMaxSize(),

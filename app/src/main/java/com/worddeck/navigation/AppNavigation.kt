@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.worddeck.domain.model.User
 import com.worddeck.feature.auth.AuthUiState
 import com.worddeck.feature.auth.LoginScreen
 import com.worddeck.feature.auth.RegisterScreen
@@ -25,6 +26,7 @@ fun AppNavigation(
     uiState: AuthUiState,
     onLogin: (email: String, password: String) -> Unit,
     onRegister: (displayName: String, email: String, password: String) -> Unit,
+    onUpdateDisplayName: (displayName: String) -> Unit,
     onLogout: () -> Unit,
     onClearErrors: () -> Unit,
     modifier: Modifier = Modifier,
@@ -42,6 +44,7 @@ fun AppNavigation(
         else -> MainNavigation(
             uiState = uiState,
             user = currentUser,
+            onUpdateDisplayName = onUpdateDisplayName,
             onLogout = onLogout,
             modifier = modifier,
         )
@@ -88,7 +91,8 @@ private fun AuthNavigation(
 @Composable
 private fun MainNavigation(
     uiState: AuthUiState,
-    user: com.worddeck.domain.model.User,
+    user: User,
+    onUpdateDisplayName: (String) -> Unit,
     onLogout: () -> Unit,
     modifier: Modifier,
 ) {
@@ -101,8 +105,10 @@ private fun MainNavigation(
         composable(AppDestination.HOME) {
             HomeScreen(
                 user = user,
-                isLoggingOut = uiState.isSubmitting,
+                isSubmitting = uiState.isSubmitting,
+                displayNameError = uiState.formErrors.displayName,
                 error = uiState.error,
+                onUpdateDisplayName = onUpdateDisplayName,
                 onLogout = onLogout,
             )
         }

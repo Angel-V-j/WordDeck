@@ -10,10 +10,15 @@
     <string name="open_register_action">Need an account? Register</string>
     <string name="open_login_action">Already have an account? Log in</string>
     <string name="logout_action">Log out</string>
+    <string name="profile_title">Profile</string>
     <string name="welcome_user">Welcome, %1$s</string>
+    <string name="email_identity">Email: %1$s</string>
+    <string name="save_display_name_action">Save display name</string>
+    <string name="display_name_error">Display name %1$s</string>
+    <string name="account_action_error">The account action failed. Please try again.</string>
     <string name="invalid_credentials_error">Invalid email or password</string>
     <string name="email_already_used_error">An account with this email already exists</string>
+    <string name="session_expired_error">Your session has expired. Please log in again.</string>
     <string name="network_error">No internet connection</string>
     <string name="authentication_unavailable_error">Authentication is temporarily unavailable</string>
-    <string name="logout_error">Could not log out. Please try again.</string>
 </resources>

@@ -16,5 +16,7 @@ interface AuthenticationRepository {
 
     suspend fun login(email: String, password: String): AppResult<User>
 
+    suspend fun updateDisplayName(displayName: DisplayName): AppResult<User>
+
     suspend fun logout(): AppResult<Unit>
 }

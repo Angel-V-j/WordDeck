@@ -10,7 +10,8 @@ repetition. Проектът се разработва постепенно ка
 
 Проектът е един Gradle application module (`:app`) с Kotlin packages за
 feature, domain и data слоевете. Реализиран е първият завършен вертикален flow:
-регистрация, вход, възстановяване на Firebase сесия и изход.
+регистрация, вход, възстановяване на Firebase сесия, редактиране на display
+name и изход.
 
 Authentication UI използва Compose, feature-specific `AuthUiState` и
 `AuthViewModel`. Firebase Authentication остава скрит зад domain repository

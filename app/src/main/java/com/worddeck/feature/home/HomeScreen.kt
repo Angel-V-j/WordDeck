@@ -3,13 +3,23 @@ package com.worddeck.feature.home
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -21,43 +31,78 @@ import com.worddeck.domain.model.User
 @Composable
 fun HomeScreen(
     user: User,
-    isLoggingOut: Boolean,
+    isSubmitting: Boolean,
+    displayNameError: String?,
     error: AppError?,
+    onUpdateDisplayName: (String) -> Unit,
     onLogout: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var displayName by rememberSaveable(user.displayName.value) {
+        mutableStateOf(user.displayName.value)
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .imePadding()
+            .navigationBarsPadding()
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Text(
-            text = stringResource(R.string.welcome_user, user.displayName.value),
-            style = MaterialTheme.typography.headlineMedium,
-        )
-        Text(
-            text = user.email.value,
-            style = MaterialTheme.typography.bodyLarge,
-        )
-        error?.let {
-            Text(
-                text = stringResource(R.string.logout_error),
-                color = MaterialTheme.colorScheme.error,
-            )
-        }
-        Button(
-            onClick = onLogout,
-            enabled = !isLoggingOut,
-            modifier = Modifier.padding(top = 16.dp),
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .widthIn(max = 480.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            if (isLoggingOut) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(20.dp),
-                    strokeWidth = 2.dp,
+            Text(
+                text = stringResource(R.string.profile_title),
+                style = MaterialTheme.typography.headlineMedium,
+            )
+            Text(
+                text = stringResource(R.string.welcome_user, user.displayName.value),
+                style = MaterialTheme.typography.titleLarge,
+            )
+            Text(
+                text = stringResource(R.string.email_identity, user.email.value),
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            OutlinedTextField(
+                value = displayName,
+                onValueChange = { displayName = it },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !isSubmitting,
+                singleLine = true,
+                label = { Text(stringResource(R.string.display_name_label)) },
+                isError = displayNameError != null,
+                supportingText = displayNameError?.let { reason ->
+                    { Text(stringResource(R.string.display_name_error, reason)) }
+                },
+            )
+            OutlinedButton(
+                onClick = { onUpdateDisplayName(displayName) },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !isSubmitting,
+            ) {
+                Text(stringResource(R.string.save_display_name_action))
+            }
+            if (error != null) {
+                Text(
+                    text = stringResource(R.string.account_action_error),
+                    color = MaterialTheme.colorScheme.error,
                 )
-            } else {
+            }
+            if (isSubmitting) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            }
+            OutlinedButton(
+                onClick = onLogout,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !isSubmitting,
+            ) {
                 Text(stringResource(R.string.logout_action))
             }
         }
