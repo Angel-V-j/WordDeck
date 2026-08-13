@@ -9,8 +9,6 @@ import kotlinx.coroutines.flow.Flow
 interface DeckRepository {
     fun observeByOwner(ownerId: UserId): Flow<AppResult<List<Deck>>>
 
-    suspend fun findById(id: DeckId): AppResult<Deck?>
-
     suspend fun save(deck: Deck): AppResult<Unit>
 
     suspend fun delete(id: DeckId): AppResult<Unit>

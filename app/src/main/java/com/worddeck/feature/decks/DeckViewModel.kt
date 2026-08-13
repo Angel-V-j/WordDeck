@@ -179,23 +179,9 @@ private fun validateFields(
         is AppResult.Failure -> return titleResult
     }
 
-    val sourceLanguageResult = DeckLanguage.from(sourceLanguage)
-    val validSourceLanguage = when (sourceLanguageResult) {
-        is AppResult.Success -> sourceLanguageResult.value
-        is AppResult.Failure -> return sourceLanguageResult
-    }
-
-    val targetLanguageResult = DeckLanguage.from(targetLanguage)
-    val validTargetLanguage = when (targetLanguageResult) {
-        is AppResult.Success -> targetLanguageResult.value
-        is AppResult.Failure -> return targetLanguageResult
-    }
-
-    val categoryResult = DeckCategory.from(category)
-    val validCategory = when (categoryResult) {
-        is AppResult.Success -> categoryResult.value
-        is AppResult.Failure -> return categoryResult
-    }
+    val validSourceLanguage = DeckLanguage.from(sourceLanguage)
+    val validTargetLanguage = DeckLanguage.from(targetLanguage)
+    val validCategory = DeckCategory.from(category)
 
     return AppResult.Success(
         ValidatedDeckFields(

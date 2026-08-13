@@ -43,11 +43,12 @@ class FlashcardViewModel(
                 when (result) {
                     is AppResult.Success -> {
                         allCards = result.value
-                        _uiState.value = _uiState.value.copy(
-                            listStatus = OperationStatus.SUCCESS,
-                            error = null,
+                        publishWithVisibleCards(
+                            _uiState.value.copy(
+                                listStatus = OperationStatus.SUCCESS,
+                                error = null,
+                            ),
                         )
-                        updateVisibleCards()
                     }
                     is AppResult.Failure -> {
                         allCards = emptyList()
@@ -63,8 +64,7 @@ class FlashcardViewModel(
     }
 
     fun updateSearchQuery(query: String) {
-        _uiState.value = _uiState.value.copy(searchQuery = query)
-        updateVisibleCards()
+        publishWithVisibleCards(_uiState.value.copy(searchQuery = query))
     }
 
     fun save(
@@ -193,8 +193,7 @@ class FlashcardViewModel(
         )
     }
 
-    private fun updateVisibleCards() {
-        val state = _uiState.value
+    private fun publishWithVisibleCards(state: FlashcardUiState) {
         val query = state.searchQuery.trim()
         val visibleCards = allCards.filter { it.matchesSearch(query) }
         _uiState.value = state.copy(cards = visibleCards)

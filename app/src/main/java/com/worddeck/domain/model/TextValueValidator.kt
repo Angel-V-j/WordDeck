@@ -17,13 +17,11 @@ internal object TextValueValidator {
         }
     }
 
-    fun <T> validateOptional(
+    fun <T> normalizeOptional(
         raw: String?,
         create: (String) -> T,
-    ): AppResult<T?> {
+    ): T? {
         val normalized = raw?.trim().orEmpty()
-        return AppResult.Success(
-            if (normalized.isEmpty()) null else create(normalized),
-        )
+        return if (normalized.isEmpty()) null else create(normalized)
     }
 }

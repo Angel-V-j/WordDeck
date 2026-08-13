@@ -7,6 +7,9 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -182,8 +185,16 @@ private fun MainNavigation(
             arguments = listOf(navArgument("deckId") { type = NavType.StringType }),
         ) { backStackEntry ->
             val selectedId = backStackEntry.arguments?.getString("deckId")
-            val deck = homeUiState.decks.firstOrNull { it.id.value == selectedId }
-            if (deck == null) {
+            val latestDeck = homeUiState.decks.firstOrNull { it.id.value == selectedId }
+            var deck by remember(selectedId) { mutableStateOf(latestDeck) }
+            LaunchedEffect(latestDeck) {
+                // Keep the last deck until this destination closes after a successful delete.
+                if (latestDeck != null) deck = latestDeck
+            }
+            val currentDeck = deck
+            if (currentDeck == null && homeUiState.status == OperationStatus.LOADING) {
+                LoadingScreen(Modifier)
+            } else if (currentDeck == null) {
                 DeckDetailsScreen(
                     deck = null,
                     uiState = DeckUiState(),
@@ -198,23 +209,23 @@ private fun MainNavigation(
                 )
             } else {
                 val detailsViewModel = viewModel<DeckViewModel>(
-                    key = "details-${deck.id.value}",
+                    key = "details-${currentDeck.id.value}",
                 ) {
                     DeckViewModel(
                         deckRepository = deckRepository,
                         ownerId = user.id,
                         idGenerator = idGenerator,
                         clock = clock,
-                        existingDeck = deck,
+                        existingDeck = currentDeck,
                     )
                 }
                 val detailsState by detailsViewModel.uiState.collectAsStateWithLifecycle()
                 val flashcardViewModel = viewModel<FlashcardViewModel>(
-                    key = "cards-${deck.id.value}",
+                    key = "cards-${currentDeck.id.value}",
                 ) {
                     FlashcardViewModel(
                         flashcardRepository = flashcardRepository,
-                        deckId = deck.id,
+                        deckId = currentDeck.id,
                         idGenerator = idGenerator,
                         clock = clock,
                     )
@@ -226,11 +237,11 @@ private fun MainNavigation(
                     }
                 }
                 DeckDetailsScreen(
-                    deck = deck,
+                    deck = currentDeck,
                     uiState = detailsState,
                     flashcardUiState = flashcardState,
                     onEdit = {
-                        navController.navigate(AppDestination.editDeck(deck.id.value))
+                        navController.navigate(AppDestination.editDeck(currentDeck.id.value))
                     },
                     onDelete = detailsViewModel::delete,
                     onSaveFlashcard = flashcardViewModel::save,
@@ -257,8 +268,15 @@ private fun MainNavigation(
             arguments = listOf(navArgument("deckId") { type = NavType.StringType }),
         ) { backStackEntry ->
             val selectedId = backStackEntry.arguments?.getString("deckId")
-            val deck = homeUiState.decks.firstOrNull { it.id.value == selectedId }
-            if (deck == null) {
+            val latestDeck = homeUiState.decks.firstOrNull { it.id.value == selectedId }
+            var deck by remember(selectedId) { mutableStateOf(latestDeck) }
+            LaunchedEffect(latestDeck) {
+                if (latestDeck != null) deck = latestDeck
+            }
+            val currentDeck = deck
+            if (currentDeck == null && homeUiState.status == OperationStatus.LOADING) {
+                LoadingScreen(Modifier)
+            } else if (currentDeck == null) {
                 DeckDetailsScreen(
                     deck = null,
                     uiState = DeckUiState(),
@@ -273,8 +291,8 @@ private fun MainNavigation(
                 )
             } else {
                 DeckEditorDestination(
-                    key = "edit-${deck.id.value}",
-                    existingDeck = deck,
+                    key = "edit-${currentDeck.id.value}",
+                    existingDeck = currentDeck,
                     user = user,
                     deckRepository = deckRepository,
                     idGenerator = idGenerator,

@@ -6,6 +6,7 @@ import com.google.firebase.auth.UserProfileChangeRequest
 import com.worddeck.common.AppError
 import com.worddeck.common.AppResult
 import com.worddeck.domain.model.DisplayName
+import com.worddeck.domain.model.EmailAddress
 import com.worddeck.domain.model.User
 import com.worddeck.domain.repository.AuthenticationRepository
 import kotlinx.coroutines.channels.awaitClose
@@ -13,7 +14,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 
-private const val EMAIL_FIELD = "email"
 private const val PASSWORD_FIELD = "password"
 private const val BLANK_REASON = "must not be blank"
 
@@ -39,16 +39,14 @@ internal class FirebaseAuthRepository(
 
     override suspend fun register(
         displayName: DisplayName,
-        email: String,
+        email: EmailAddress,
         password: String,
     ): AppResult<User> {
-        val normalizedEmail = email.trim()
-        blankInputFailure(normalizedEmail, EMAIL_FIELD)?.let { return it }
         blankInputFailure(password, PASSWORD_FIELD)?.let { return it }
 
         return try {
             val firebaseUser = firebaseAuth
-                .createUserWithEmailAndPassword(normalizedEmail, password)
+                .createUserWithEmailAndPassword(email.value, password)
                 .await()
                 .user
                 ?: return unavailable("registration")
@@ -67,14 +65,12 @@ internal class FirebaseAuthRepository(
         }
     }
 
-    override suspend fun login(email: String, password: String): AppResult<User> {
-        val normalizedEmail = email.trim()
-        blankInputFailure(normalizedEmail, EMAIL_FIELD)?.let { return it }
+    override suspend fun login(email: EmailAddress, password: String): AppResult<User> {
         blankInputFailure(password, PASSWORD_FIELD)?.let { return it }
 
         return try {
             val firebaseUser = firebaseAuth
-                .signInWithEmailAndPassword(normalizedEmail, password)
+                .signInWithEmailAndPassword(email.value, password)
                 .await()
                 .user
                 ?: return unavailable("login")

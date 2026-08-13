@@ -46,6 +46,25 @@ class FlashcardMapperTest {
             entity.toDomain(),
         )
     }
+
+    @Test
+    fun `blank persisted optional text becomes absent`() {
+        val entity = FlashcardEntity(
+            id = "card-1",
+            deckId = "deck-1",
+            front = "hello",
+            back = "hola",
+            exampleSentence = "   ",
+            additionalInformation = "  ",
+            createdAt = 1_000,
+            updatedAt = 2_000,
+        )
+
+        val flashcard = (entity.toDomain() as AppResult.Success).value
+
+        assertEquals(null, flashcard.exampleSentence)
+        assertEquals(null, flashcard.additionalInformation)
+    }
 }
 
 private fun <T> AppResult<T>.successValue(): T = (this as AppResult.Success).value

@@ -59,30 +59,69 @@ class AuthViewModel(
     fun login(email: String, password: String) {
         if (_uiState.value.submitStatus == OperationStatus.LOADING) return
 
-        submit(
-            formErrors = validateLogin(email, password),
-            operation = {
-                authenticationRepository.login(
-                    email = email.trim(),
-                    password = password,
-                )
-            },
+        val emailResult = EmailAddress.from(email)
+        val formErrors = AuthFormErrors(
+            email = emailResult.validationReason(),
+            password = password.requiredReason(),
         )
+        if (formErrors.hasErrors()) {
+            showFormErrors(formErrors)
+            return
+        }
+
+        val validEmail = when (emailResult) {
+            is AppResult.Success -> emailResult.value
+            is AppResult.Failure -> {
+                showFailure(emailResult.error)
+                return
+            }
+        }
+
+        submit {
+            authenticationRepository.login(
+                email = validEmail,
+                password = password,
+            )
+        }
     }
 
     fun register(displayName: String, email: String, password: String) {
         if (_uiState.value.submitStatus == OperationStatus.LOADING) return
 
-        submit(
-            formErrors = validateRegistration(displayName, email, password),
-            operation = {
-                authenticationRepository.register(
-                    displayName = DisplayName.from(displayName).successValue(),
-                    email = email.trim(),
-                    password = password,
-                )
-            },
+        val displayNameResult = DisplayName.from(displayName)
+        val emailResult = EmailAddress.from(email)
+        val formErrors = AuthFormErrors(
+            displayName = displayNameResult.validationReason(),
+            email = emailResult.validationReason(),
+            password = password.registrationPasswordReason(),
         )
+        if (formErrors.hasErrors()) {
+            showFormErrors(formErrors)
+            return
+        }
+
+        val validDisplayName = when (displayNameResult) {
+            is AppResult.Success -> displayNameResult.value
+            is AppResult.Failure -> {
+                showFailure(displayNameResult.error)
+                return
+            }
+        }
+        val validEmail = when (emailResult) {
+            is AppResult.Success -> emailResult.value
+            is AppResult.Failure -> {
+                showFailure(emailResult.error)
+                return
+            }
+        }
+
+        submit {
+            authenticationRepository.register(
+                displayName = validDisplayName,
+                email = validEmail,
+                password = password,
+            )
+        }
     }
 
     fun logout() {
@@ -106,16 +145,25 @@ class AuthViewModel(
         if (_uiState.value.submitStatus == OperationStatus.LOADING) return
 
         val displayNameResult = DisplayName.from(displayName)
-        submit(
-            formErrors = AuthFormErrors(
-                displayName = displayNameResult.validationReason(),
-            ),
-            operation = {
-                authenticationRepository.updateDisplayName(
-                    displayNameResult.successValue(),
-                )
-            },
+        val formErrors = AuthFormErrors(
+            displayName = displayNameResult.validationReason(),
         )
+        if (formErrors.hasErrors()) {
+            showFormErrors(formErrors)
+            return
+        }
+
+        val validDisplayName = when (displayNameResult) {
+            is AppResult.Success -> displayNameResult.value
+            is AppResult.Failure -> {
+                showFailure(displayNameResult.error)
+                return
+            }
+        }
+
+        submit {
+            authenticationRepository.updateDisplayName(validDisplayName)
+        }
     }
 
     fun clearErrors() {
@@ -128,21 +176,7 @@ class AuthViewModel(
         }
     }
 
-    private fun submit(
-        formErrors: AuthFormErrors,
-        operation: suspend () -> AppResult<User>,
-    ) {
-        if (formErrors.hasErrors()) {
-            _uiState.update {
-                it.copy(
-                    submitStatus = OperationStatus.ERROR,
-                    formErrors = formErrors,
-                    error = null,
-                )
-            }
-            return
-        }
-
+    private fun submit(operation: suspend () -> AppResult<User>) {
         _uiState.update {
             it.copy(
                 submitStatus = OperationStatus.LOADING,
@@ -162,6 +196,16 @@ class AuthViewModel(
         }
     }
 
+    private fun showFormErrors(formErrors: AuthFormErrors) {
+        _uiState.update {
+            it.copy(
+                submitStatus = OperationStatus.ERROR,
+                formErrors = formErrors,
+                error = null,
+            )
+        }
+    }
+
     private fun showFailure(error: AppError) {
         if (error == AppError.Authentication.Unauthenticated) {
             _uiState.value = AuthUiState(
@@ -172,42 +216,33 @@ class AuthViewModel(
             return
         }
 
+        val formErrors = (error as? AppError.Validation)?.toFormErrors()
         _uiState.update {
-            if (error is AppError.Validation) {
+            if (formErrors != null) {
                 it.copy(
                     submitStatus = OperationStatus.ERROR,
-                    formErrors = error.toFormErrors(),
+                    formErrors = formErrors,
+                    error = null,
                 )
             } else {
-                it.copy(submitStatus = OperationStatus.ERROR, error = error)
+                it.copy(
+                    submitStatus = OperationStatus.ERROR,
+                    formErrors = AuthFormErrors(),
+                    error = error,
+                )
             }
         }
     }
 }
 
-private fun validateLogin(email: String, password: String) = AuthFormErrors(
-    email = EmailAddress.from(email).validationReason(),
-    password = password.requiredReason(),
-)
-
-private fun validateRegistration(
-    displayName: String,
-    email: String,
-    password: String,
-) = AuthFormErrors(
-    displayName = DisplayName.from(displayName).validationReason(),
-    email = EmailAddress.from(email).validationReason(),
-    password = password.registrationPasswordReason(),
-)
-
 private fun AuthFormErrors.hasErrors(): Boolean =
     displayName != null || email != null || password != null
 
-private fun AppError.Validation.toFormErrors(): AuthFormErrors = when (field) {
+private fun AppError.Validation.toFormErrors(): AuthFormErrors? = when (field) {
     "display name" -> AuthFormErrors(displayName = reason)
     "email" -> AuthFormErrors(email = reason)
     "password" -> AuthFormErrors(password = reason)
-    else -> AuthFormErrors()
+    else -> null
 }
 
 private fun AppResult<*>.validationReason(): String? =
@@ -221,5 +256,3 @@ private fun String.registrationPasswordReason(): String? = when {
     length < 6 -> "must be at least 6 characters"
     else -> null
 }
-
-private fun <T> AppResult<T>.successValue(): T = (this as AppResult.Success).value

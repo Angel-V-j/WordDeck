@@ -117,9 +117,9 @@ class DeckViewModelTest {
         assertEquals(
             existingDeck.copy(
                 title = DeckTitle.from("Updated deck").successValue(),
-                sourceLanguage = DeckLanguage.from("Bulgarian").successValue(),
-                targetLanguage = DeckLanguage.from("Spanish").successValue(),
-                category = DeckCategory.from("Travel").successValue(),
+                sourceLanguage = DeckLanguage.from("Bulgarian"),
+                targetLanguage = DeckLanguage.from("Spanish"),
+                category = DeckCategory.from("Travel"),
                 updatedAt = NOW,
             ),
             repository.savedDeck,
@@ -201,9 +201,9 @@ private fun deck(
     id = DeckId.from(id).successValue(),
     ownerId = USER_ID,
     title = DeckTitle.from("Spanish basics").successValue(),
-    sourceLanguage = DeckLanguage.from("English").successValue(),
-    targetLanguage = DeckLanguage.from("Spanish").successValue(),
-    category = DeckCategory.from("Vocabulary").successValue(),
+    sourceLanguage = DeckLanguage.from("English"),
+    targetLanguage = DeckLanguage.from("Spanish"),
+    category = DeckCategory.from("Vocabulary"),
     visibility = visibility,
     createdAt = createdAt,
     updatedAt = updatedAt,
@@ -220,9 +220,6 @@ private class FakeDeckRepository(
 
     override fun observeByOwner(ownerId: UserId): Flow<AppResult<List<Deck>>> =
         flowOf(AppResult.Success(emptyList()))
-
-    override suspend fun findById(id: DeckId): AppResult<Deck?> =
-        AppResult.Success(null)
 
     override suspend fun save(deck: Deck): AppResult<Unit> {
         savedDeck = deck

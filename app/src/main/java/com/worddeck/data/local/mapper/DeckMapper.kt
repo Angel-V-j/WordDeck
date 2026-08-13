@@ -28,9 +28,9 @@ internal fun DeckEntity.toDomain(): AppResult<Deck> {
     val domainId = DeckId.from(id).valueOrReturnFailure { return it }
     val domainOwnerId = UserId.from(ownerId).valueOrReturnFailure { return it }
     val domainTitle = DeckTitle.from(title).valueOrReturnFailure { return it }
-    val domainSourceLanguage = DeckLanguage.from(sourceLanguage).valueOrReturnFailure { return it }
-    val domainTargetLanguage = DeckLanguage.from(targetLanguage).valueOrReturnFailure { return it }
-    val domainCategory = DeckCategory.from(category).valueOrReturnFailure { return it }
+    val domainSourceLanguage = DeckLanguage.from(sourceLanguage)
+    val domainTargetLanguage = DeckLanguage.from(targetLanguage)
+    val domainCategory = DeckCategory.from(category)
     val domainVisibility = DeckVisibility.entries.firstOrNull { it.name == visibility }
         ?: return AppResult.Failure(
             AppError.Validation("deck visibility", "Unknown value: $visibility"),

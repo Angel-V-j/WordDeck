@@ -5,7 +5,6 @@ import com.worddeck.common.AppError
 import com.worddeck.common.AppResult
 import com.worddeck.data.local.dao.DeckDao
 import com.worddeck.data.local.dao.FlashcardDao
-import com.worddeck.data.local.mapper.toDomain
 import com.worddeck.data.local.mapper.toDomainDecks
 import com.worddeck.data.local.mapper.toDomainFlashcards
 import com.worddeck.data.local.mapper.toEntity
@@ -29,10 +28,6 @@ class LocalDeckRepository(
             .map { it.toDomainDecks() }
             .asDatabaseResult("decks")
 
-    override suspend fun findById(id: DeckId): AppResult<Deck?> = databaseRead("deck") {
-        deckDao.findById(id.value)?.toDomain() ?: AppResult.Success(null)
-    }
-
     override suspend fun save(deck: Deck): AppResult<Unit> = databaseWrite("deck") {
         deckDao.save(deck.toEntity())
     }
@@ -51,10 +46,6 @@ class LocalFlashcardRepository(
             .map { it.toDomainFlashcards() }
             .asDatabaseResult("flashcards")
 
-    override suspend fun findById(id: CardId): AppResult<Flashcard?> = databaseRead("flashcard") {
-        flashcardDao.findById(id.value)?.toDomain() ?: AppResult.Success(null)
-    }
-
     override suspend fun save(flashcard: Flashcard): AppResult<Unit> = databaseWrite("flashcard") {
         flashcardDao.save(flashcard.toEntity())
     }
@@ -70,15 +61,6 @@ private fun <T> Flow<AppResult<T>>.asDatabaseResult(resource: String): Flow<AppR
         if (error !is SQLiteException) throw error
         emit(databaseFailure(resource))
     }
-
-private suspend fun <T> databaseRead(
-    resource: String,
-    read: suspend () -> AppResult<T>,
-): AppResult<T> = try {
-    read()
-} catch (_: SQLiteException) {
-    databaseFailure(resource)
-}
 
 private suspend fun databaseWrite(
     resource: String,

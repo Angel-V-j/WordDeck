@@ -61,31 +61,49 @@ class TextValuesTest {
     fun `blank optional text is normalized to null`() {
         val result = DeckCategory.from("   ")
 
-        assertNull(result.successValue())
+        assertNull(result)
     }
 
     @Test
     fun `missing optional language is represented as null`() {
         val result = DeckLanguage.from(null)
 
-        assertNull(result.successValue())
+        assertNull(result)
     }
 
     @Test
     fun `specified optional language is trimmed`() {
         val result = DeckLanguage.from("  Spanish  ")
 
-        assertEquals("Spanish", result.successValue()?.value)
+        assertEquals("Spanish", result?.value)
     }
 
     @Test
-    fun `different identifier types share validation without becoming interchangeable`() {
-        val userId = UserId.from(" user-1 ").successValue()
-        val deckId = DeckId.from(" deck-1 ").successValue()
+    fun `different identifier types are not interchangeable`() {
+        val userId = UserId.from("user-1").successValue()
+        val deckId = DeckId.from("deck-1").successValue()
 
         assertEquals("user-1", userId.value)
         assertEquals("deck-1", deckId.value)
         assertTrue(userId::class != deckId::class)
+    }
+
+    @Test
+    fun `blank identifier returns validation failure`() {
+        assertEquals(
+            AppResult.Failure(AppError.Validation("deck id", "must not be blank")),
+            DeckId.from("   "),
+        )
+    }
+
+    @Test
+    fun `identifier with surrounding whitespace returns validation failure`() {
+        assertEquals(
+            AppResult.Failure(
+                AppError.Validation("deck id", "must not contain surrounding whitespace"),
+            ),
+            DeckId.from(" deck-1 "),
+        )
     }
 }
 

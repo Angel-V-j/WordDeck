@@ -13,8 +13,11 @@ import com.worddeck.domain.model.Flashcard
 import com.worddeck.domain.repository.FlashcardRepository
 import com.worddeck.testing.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -207,6 +210,38 @@ class FlashcardViewModelTest {
         assertEquals(cards, viewModel.uiState.value.cards)
     }
 
+    @Test
+    fun `repository and search changes publish consistent card lists`() = runTest {
+        val greeting = flashcard(id = "card-1", front = "hello")
+        val animal = flashcard(id = "card-2", front = "cat")
+        val repository = FakeFlashcardRepository(AppResult.Success(listOf(greeting)))
+        val viewModel = createViewModel(repository)
+        advanceUntilIdle()
+
+        val states = mutableListOf<FlashcardUiState>()
+        val collectionJob: Job = launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect(states::add)
+        }
+
+        states.clear()
+        repository.emit(AppResult.Success(listOf(greeting, animal)))
+        advanceUntilIdle()
+
+        assertEquals(1, states.size)
+        states.forEach { state ->
+            assertEquals(listOf(greeting, animal), state.cards)
+        }
+
+        states.clear()
+        viewModel.updateSearchQuery("cat")
+        assertEquals(1, states.size)
+        states.forEach { state ->
+            assertEquals("cat", state.searchQuery)
+            assertEquals(listOf(animal), state.cards)
+        }
+        collectionJob.cancel()
+    }
+
     private fun createViewModel(
         repository: FakeFlashcardRepository,
         idGenerator: IdGenerator = IdGenerator { "card-1" },
@@ -259,7 +294,9 @@ private class FakeFlashcardRepository(
         return cards
     }
 
-    override suspend fun findById(id: CardId): AppResult<Flashcard?> = AppResult.Success(null)
+    fun emit(result: AppResult<List<Flashcard>>) {
+        cards.value = result
+    }
 
     override suspend fun save(flashcard: Flashcard): AppResult<Unit> {
         savedFlashcard = flashcard

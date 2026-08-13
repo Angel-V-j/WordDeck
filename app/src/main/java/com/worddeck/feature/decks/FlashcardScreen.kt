@@ -45,14 +45,17 @@ fun FlashcardSection(
     modifier: Modifier = Modifier,
 ) {
     var showEditor by rememberSaveable { mutableStateOf(false) }
-    var editingFlashcard by remember { mutableStateOf<Flashcard?>(null) }
+    var editingFlashcardId by rememberSaveable { mutableStateOf<String?>(null) }
     var deleteCandidate by remember { mutableStateOf<Flashcard?>(null) }
+    val editingFlashcard = uiState.cards.firstOrNull { flashcard ->
+        flashcard.id.value == editingFlashcardId
+    }
     val isWorking = uiState.operationStatus == OperationStatus.LOADING
 
     LaunchedEffect(uiState.operationStatus) {
         if (uiState.operationStatus == OperationStatus.SUCCESS) {
             showEditor = false
-            editingFlashcard = null
+            editingFlashcardId = null
             deleteCandidate = null
             onClearOperation()
         }
@@ -65,11 +68,12 @@ fun FlashcardSection(
             onSave = onSave,
             onDeleteRequest = { flashcard ->
                 showEditor = false
+                editingFlashcardId = null
                 deleteCandidate = flashcard
             },
             onDismiss = {
                 showEditor = false
-                editingFlashcard = null
+                editingFlashcardId = null
                 onClearOperation()
             },
         )
@@ -114,7 +118,7 @@ fun FlashcardSection(
             TextButton(
                 onClick = {
                     onClearOperation()
-                    editingFlashcard = null
+                    editingFlashcardId = null
                     showEditor = true
                 },
                 enabled = !isWorking,
@@ -176,7 +180,7 @@ fun FlashcardSection(
                             flashcard = flashcard,
                             onClick = {
                                 onClearOperation()
-                                editingFlashcard = flashcard
+                                editingFlashcardId = flashcard.id.value
                                 showEditor = true
                             },
                         )

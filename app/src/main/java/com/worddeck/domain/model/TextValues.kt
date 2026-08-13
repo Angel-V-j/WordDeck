@@ -42,16 +42,16 @@ value class DeckTitle private constructor(val value: String) {
 @JvmInline
 value class DeckLanguage private constructor(val value: String) {
     companion object {
-        fun from(raw: String?): AppResult<DeckLanguage?> =
-            TextValueValidator.validateOptional(raw) { DeckLanguage(it) }
+        fun from(raw: String?): DeckLanguage? =
+            TextValueValidator.normalizeOptional(raw) { DeckLanguage(it) }
     }
 }
 
 @JvmInline
 value class DeckCategory private constructor(val value: String) {
     companion object {
-        fun from(raw: String?): AppResult<DeckCategory?> =
-            TextValueValidator.validateOptional(raw) { DeckCategory(it) }
+        fun from(raw: String?): DeckCategory? =
+            TextValueValidator.normalizeOptional(raw) { DeckCategory(it) }
     }
 }
 

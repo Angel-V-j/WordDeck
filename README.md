@@ -9,14 +9,17 @@ repetition. Проектът се разработва постепенно ка
 ## Текущ статус
 
 Проектът е един Gradle application module (`:app`) с Kotlin packages за
-feature, domain и data слоевете. Реализиран е първият завършен вертикален flow:
-регистрация, вход, възстановяване на Firebase сесия, редактиране на display
-name и изход.
+presentation, domain и data слоевете. В момента работят:
 
-Authentication UI използва Compose, feature-specific `AuthUiState` и
-`AuthViewModel`. Firebase Authentication остава скрит зад domain repository
-interface и се тества чрез Auth Emulator. Подготвени са също Room local слой и
-manual `AppContainer`. На този етап умишлено няма:
+- регистрация, вход, възстановяване на Firebase сесия, профил и изход;
+- локално създаване, редактиране, изтриване, търсене и филтриране на тестета;
+- локално създаване, редактиране, изтриване и търсене на карти;
+- реактивно показване на Room данните чрез `Flow`, включително след restart;
+- адаптивни Compose екрани и автоматизирани unit/Room/Compose тестове.
+
+Firebase Authentication и Room са скрити зад малки repository interfaces, а
+production зависимостите се създават в manual `AppContainer`. На този етап
+умишлено няма:
 
 - Firestore, production Firebase configuration или credentials;
 - SM-2 алгоритъм, study session или statistics;
@@ -27,83 +30,76 @@ manual `AppContainer`. На този етап умишлено няма:
 
 ```text
 app/src/main/java/com/worddeck/
+├── common/                 # AppResult, Clock, IdGenerator, OperationStatus
 ├── core/
-│   └── AppResult.kt
+│   └── AppContainer.kt
 ├── data/
 │   ├── local/
 │   │   ├── database/
 │   │   ├── dao/
-│   │   └── entity/
+│   │   ├── entity/
+│   │   └── mapper/
 │   ├── remote/
 │   │   └── firebase/
-│   │       ├── auth/
-│   │       └── firestore/
+│   │       └── Firebase Auth adapter
 │   └── repository/
 ├── domain/
 │   ├── model/
-│   │   ├── User.kt
-│   │   ├── Deck.kt
-│   │   └── Flashcard.kt
+│   │   └── User, Deck, Flashcard и review модели/value classes
 │   └── repository/
 │       ├── AuthenticationRepository.kt
 │       ├── DeckRepository.kt
 │       └── FlashcardRepository.kt
 ├── feature/
 │   ├── auth/
-│   ├── home/
-│   │   └── HomeScreen.kt
-│   ├── decks/
-│   ├── study/
-│   └── statistics/
+│   ├── home/               # owner deck list и deck details
+│   └── decks/              # deck/card forms и ViewModel-и
 ├── navigation/
 │   └── AppNavigation.kt
 ├── ui/
-│   ├── components/
 │   └── theme/
 │       ├── Color.kt
 │       └── Theme.kt
 ├── MainActivity.kt
-└── WordDeckApp.kt
+├── WordDeckApp.kt
+└── WordDeckApplication.kt
 ```
 
-Папките без файлове в схемата показват планирани packages. Git ще ги добави
-реално, когато в тях се появи първата необходима имплементация; не използваме
-`.gitkeep` или фиктивни Kotlin класове само за да пазим празни директории.
+Нови packages се добавят едва когато имат реален consumer; не използваме
+`.gitkeep` или фиктивни класове за планирана функционалност.
 
 ## Отговорности
 
-- `feature/` съдържа Compose UI и бъдещата presentation логика по
-  функционалности. ViewModel и UiState се добавят само при реална нужда.
+- `feature/` съдържа Compose UI, feature-specific UiState и ViewModel-и.
 - `domain/model/` съдържа platform-independent модели.
 - `domain/repository/` съдържа само абстракциите, които feature слоят може да
   използва. Те не знаят за Room или Firebase.
-- `data/local/` е мястото за бъдещия Room source of truth.
-- `data/remote/firebase/` е мястото за бъдещите Authentication и Firestore
-  adapters.
-- `data/repository/` ще съдържа concrete repository implementations, които
-  координират local и remote data sources.
-- `core/` съдържа само малки, действително общи типове. Засега това е
-  `AppResult`.
+- `data/local/` съдържа текущия Room source of truth.
+- `data/remote/firebase/` съдържа Firebase Authentication adapter-а; Firestore
+  ще бъде добавен във фазата за synchronization.
+- `data/repository/` съдържа тънките Room repository implementations.
+- `common/` съдържа само малки общи типове; `core/` съдържа composition root-а.
 - `navigation/` съдържа централния Navigation Compose graph.
 - `ui/` съдържа Material 3 theme и малък брой reusable UI components.
 
 ## Посока на зависимостите
 
-Планираният поток е:
+Текущият CRUD поток е:
 
 ```text
 Compose UI
     ↓
 ViewModel
     ↓
-UseCase (само за реална бизнес операция)
-    ↓
 Repository abstraction
     ↓
 Room source of truth
-    ↕
-Firebase synchronization
 ```
+
+UseCase се добавя само за координирана бизнес операция. Например бъдещият
+review flow ще мине през `Compose → ViewModel → ReviewFlashcardUseCase`, който
+ще координира SM-2 и записването през repository в Room. Firestore по-късно ще
+синхронизира Room данните.
 
 `domain` не трябва да зависи от Android, Compose, Room или Firebase. При
 липса на интернет UI трябва да продължи да работи през repository и Room.
@@ -134,12 +130,9 @@ code или README.
 .\gradlew.bat test assembleDebug --no-configuration-cache
 ```
 
-## Решения преди реалната имплементация
+## Следващи основни стъпки
 
-Преди Room и SM-2 трябва да се уточнят:
-
-1. как UI оценките се преобразуват към SM-2 quality `0..5`;
-2. точните полета на `ReviewState` и immutable `ReviewEvent`;
-3. дали локалната база пази данни за един или за няколко Firebase users;
-4. минималната synchronization/conflict стратегия, без преждевременен
-   outbox или сложен sync framework.
+1. дефиниране и unit testing на чистия SM-2 алгоритъм;
+2. учебна сесия и атомарно записване на review state/history;
+3. минимална Firestore синхронизация върху Room source of truth;
+4. статистики, приемателно тестване и дипломна документация.

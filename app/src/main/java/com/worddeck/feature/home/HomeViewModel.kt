@@ -36,12 +36,13 @@ class HomeViewModel(
             deckRepository.observeByOwner(ownerId).collect { result ->
                 when (result) {
                     is AppResult.Success -> {
-                        _uiState.value = _uiState.value.copy(
-                            status = OperationStatus.SUCCESS,
-                            decks = result.value,
-                            error = null,
+                        publishWithVisibleDecks(
+                            _uiState.value.copy(
+                                status = OperationStatus.SUCCESS,
+                                decks = result.value,
+                                error = null,
+                            ),
                         )
-                        updateVisibleDecks()
                     }
                     is AppResult.Failure -> {
                         _uiState.value = _uiState.value.copy(
@@ -57,22 +58,18 @@ class HomeViewModel(
     }
 
     fun updateSearchQuery(query: String) {
-        _uiState.value = _uiState.value.copy(searchQuery = query)
-        updateVisibleDecks()
+        publishWithVisibleDecks(_uiState.value.copy(searchQuery = query))
     }
 
     fun updateCategoryFilter(category: String) {
-        _uiState.value = _uiState.value.copy(categoryFilter = category)
-        updateVisibleDecks()
+        publishWithVisibleDecks(_uiState.value.copy(categoryFilter = category))
     }
 
     fun updateLanguageFilter(language: String) {
-        _uiState.value = _uiState.value.copy(languageFilter = language)
-        updateVisibleDecks()
+        publishWithVisibleDecks(_uiState.value.copy(languageFilter = language))
     }
 
-    private fun updateVisibleDecks() {
-        val state = _uiState.value
+    private fun publishWithVisibleDecks(state: HomeUiState) {
         val query = state.searchQuery.trim()
         val category = state.categoryFilter.trim()
         val language = state.languageFilter.trim()

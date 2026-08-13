@@ -14,6 +14,7 @@ import com.worddeck.domain.model.DeckVisibility
 import com.worddeck.domain.model.CardId
 import com.worddeck.domain.model.Flashcard
 import com.worddeck.domain.model.DisplayName
+import com.worddeck.domain.model.EmailAddress
 import com.worddeck.domain.model.User
 import com.worddeck.domain.model.UserId
 import com.worddeck.domain.repository.AuthenticationRepository
@@ -21,8 +22,11 @@ import com.worddeck.domain.repository.DeckRepository
 import com.worddeck.domain.repository.FlashcardRepository
 import com.worddeck.testing.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -190,6 +194,38 @@ class HomeViewModelTest {
         viewModel.updateSearchQuery("   ")
         assertEquals(decks, viewModel.uiState.value.visibleDecks)
     }
+
+    @Test
+    fun `repository and filter changes publish consistent deck lists`() = runTest {
+        val spanishDeck = createDeck(id = "deck-1", title = "Spanish basics")
+        val travelDeck = createDeck(id = "deck-2", title = "Travel phrases")
+        val repository = FakeDeckRepository(AppResult.Success(listOf(spanishDeck)))
+        val viewModel = HomeViewModel(repository, userId())
+        advanceUntilIdle()
+
+        val states = mutableListOf<HomeUiState>()
+        val collectionJob: Job = launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect(states::add)
+        }
+
+        states.clear()
+        repository.emit(AppResult.Success(listOf(spanishDeck, travelDeck)))
+        advanceUntilIdle()
+
+        assertEquals(1, states.size)
+        states.forEach { state ->
+            assertEquals(listOf(spanishDeck, travelDeck), state.visibleDecks)
+        }
+
+        states.clear()
+        viewModel.updateSearchQuery("travel")
+        assertEquals(1, states.size)
+        states.forEach { state ->
+            assertEquals("travel", state.searchQuery)
+            assertEquals(listOf(travelDeck), state.visibleDecks)
+        }
+        collectionJob.cancel()
+    }
 }
 
 private fun createDeck(
@@ -202,9 +238,9 @@ private fun createDeck(
     id = DeckId.from(id).successValue(),
     ownerId = userId(),
     title = DeckTitle.from(title).successValue(),
-    sourceLanguage = DeckLanguage.from(sourceLanguage).successValue(),
-    targetLanguage = DeckLanguage.from(targetLanguage).successValue(),
-    category = DeckCategory.from(category).successValue(),
+    sourceLanguage = DeckLanguage.from(sourceLanguage),
+    targetLanguage = DeckLanguage.from(targetLanguage),
+    category = DeckCategory.from(category),
     visibility = DeckVisibility.PRIVATE,
     createdAt = Timestamp(1_000),
     updatedAt = Timestamp(1_000),
@@ -219,11 +255,12 @@ private object UnusedAuthenticationRepository : AuthenticationRepository {
 
     override suspend fun register(
         displayName: DisplayName,
-        email: String,
+        email: EmailAddress,
         password: String,
     ): AppResult<User> = unusedDependency()
 
-    override suspend fun login(email: String, password: String): AppResult<User> = unusedDependency()
+    override suspend fun login(email: EmailAddress, password: String): AppResult<User> =
+        unusedDependency()
 
     override suspend fun updateDisplayName(displayName: DisplayName): AppResult<User> =
         unusedDependency()
@@ -234,8 +271,6 @@ private object UnusedAuthenticationRepository : AuthenticationRepository {
 private object UnusedFlashcardRepository : FlashcardRepository {
     override fun observeByDeck(deckId: DeckId): Flow<AppResult<List<Flashcard>>> = unusedDependency()
 
-    override suspend fun findById(id: CardId): AppResult<Flashcard?> = unusedDependency()
-
     override suspend fun save(flashcard: Flashcard): AppResult<Unit> = unusedDependency()
 
     override suspend fun delete(id: CardId): AppResult<Unit> = unusedDependency()
@@ -244,18 +279,21 @@ private object UnusedFlashcardRepository : FlashcardRepository {
 private fun unusedDependency(): Nothing = error("This dependency is not used by HomeViewModel")
 
 private class FakeDeckRepository(
-    private val observedResult: AppResult<List<Deck>>,
+    observedResult: AppResult<List<Deck>>,
 ) : DeckRepository {
+    private val results = MutableStateFlow(observedResult)
+
     var observedOwnerId: UserId? = null
         private set
 
     override fun observeByOwner(ownerId: UserId): Flow<AppResult<List<Deck>>> {
         observedOwnerId = ownerId
-        return flowOf(observedResult)
+        return results
     }
 
-    override suspend fun findById(id: DeckId): AppResult<Deck?> =
-        AppResult.Failure(AppError.Unavailable("Not used by this test"))
+    fun emit(result: AppResult<List<Deck>>) {
+        results.value = result
+    }
 
     override suspend fun save(deck: Deck): AppResult<Unit> =
         AppResult.Failure(AppError.Unavailable("Not used by this test"))

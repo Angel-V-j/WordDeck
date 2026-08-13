@@ -108,6 +108,7 @@ class AuthViewModelTest {
         advanceUntilIdle()
         assertEquals(OperationStatus.SUCCESS, viewModel.uiState.value.submitStatus)
         assertEquals(user, viewModel.uiState.value.currentUser)
+        assertEquals(user.email, repository.loginEmail)
     }
 
     @Test
@@ -123,6 +124,23 @@ class AuthViewModelTest {
         assertEquals(OperationStatus.ERROR, viewModel.uiState.value.submitStatus)
         assertEquals(error, viewModel.uiState.value.error)
         assertEquals(null, viewModel.uiState.value.currentUser)
+    }
+
+    @Test
+    fun `unknown repository validation field is exposed as general error`() = runTest {
+        val error = AppError.Validation("unexpected field", "is invalid")
+        val repository = FakeAuthenticationRepository(
+            loginResult = AppResult.Failure(error),
+        )
+        val viewModel = AuthViewModel(repository)
+        advanceUntilIdle()
+
+        viewModel.login(email = "maria@example.com", password = "secret1")
+        advanceUntilIdle()
+
+        assertEquals(OperationStatus.ERROR, viewModel.uiState.value.submitStatus)
+        assertEquals(error, viewModel.uiState.value.error)
+        assertEquals(AuthFormErrors(), viewModel.uiState.value.formErrors)
     }
 
     @Test
@@ -208,20 +226,23 @@ private class FakeAuthenticationRepository(
         private set
     var updatedDisplayName: DisplayName? = null
         private set
+    var loginEmail: EmailAddress? = null
+        private set
 
     override fun observeCurrentUser(): Flow<AppResult<User?>> = session
 
     override suspend fun register(
         displayName: DisplayName,
-        email: String,
+        email: EmailAddress,
         password: String,
     ): AppResult<User> {
         registerCalls += 1
         return registerResult
     }
 
-    override suspend fun login(email: String, password: String): AppResult<User> {
+    override suspend fun login(email: EmailAddress, password: String): AppResult<User> {
         loginCalls += 1
+        loginEmail = email
         return loginResult
     }
 
