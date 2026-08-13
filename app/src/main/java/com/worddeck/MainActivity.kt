@@ -11,7 +11,9 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
-            WordDeckApp()
+            WordDeckApp(
+                appContainer = (application as WordDeckApplication).appContainer,
+            )
         }
     }
 }

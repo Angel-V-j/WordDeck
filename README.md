@@ -4,22 +4,19 @@ Firebase Authentication development and Auth Emulator setup are described in
 [`FIREBASE_SETUP.md`](FIREBASE_SETUP.md).
 
 WordDeck е Android приложение за изучаване на чужди езици чрез spaced
-repetition. В момента repository-то съдържа само архитектурен skeleton за
-дипломната работа, а не завършена функционалност.
+repetition. Проектът се разработва постепенно като дипломна работа.
 
 ## Текущ статус
 
 Проектът е един Gradle application module (`:app`) с Kotlin packages за
-feature, domain и data слоевете. Минималният Compose entry point отваря само
-placeholder home екран, за да валидира Compose, Material 3 и Navigation
-Compose конфигурацията.
+feature, domain и data слоевете. Реализиран е първият завършен вертикален flow:
+регистрация, вход, възстановяване на Firebase сесия и изход.
 
-Подготвени са базов ViewModel, Room local слой, manual `AppContainer` и
-Firebase Authentication repository, тествано чрез Auth Emulator. На този етап
-умишлено няма:
+Authentication UI използва Compose, feature-specific `AuthUiState` и
+`AuthViewModel`. Firebase Authentication остава скрит зад domain repository
+interface и се тества чрез Auth Emulator. Подготвени са също Room local слой и
+manual `AppContainer`. На този етап умишлено няма:
 
-- login или registration flow;
-- auth ViewModel и работещи login/register екрани;
 - Firestore, production Firebase configuration или credentials;
 - SM-2 алгоритъм, study session или statistics;
 - synchronization между устройства;

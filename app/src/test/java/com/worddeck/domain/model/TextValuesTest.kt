@@ -34,6 +34,30 @@ class TextValuesTest {
     }
 
     @Test
+    fun `invalid email returns validation failure`() {
+        assertEquals(
+            AppResult.Failure(AppError.Validation("email", "has invalid format")),
+            EmailAddress.from("invalid-email"),
+        )
+    }
+
+    @Test
+    fun `email without top level domain is invalid`() {
+        assertEquals(
+            AppResult.Failure(AppError.Validation("email", "has invalid format")),
+            EmailAddress.from("maria@example"),
+        )
+    }
+
+    @Test
+    fun `common email characters are accepted`() {
+        assertEquals(
+            "maria.petkova+study@example-domain.com",
+            EmailAddress.from("maria.petkova+study@example-domain.com").successValue().value,
+        )
+    }
+
+    @Test
     fun `blank optional text is normalized to null`() {
         val result = DeckCategory.from("   ")
 

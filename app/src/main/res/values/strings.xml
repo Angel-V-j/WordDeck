@@ -1,7 +1,19 @@
 <resources>
     <string name="app_name">WordDeck</string>
-    <string name="architecture_skeleton_message">Architecture skeleton</string>
-    <string name="login_title">Login</string>
-    <string name="register_title">Register</string>
-    <string name="authentication_placeholder_message">Authentication will be implemented later</string>
+    <string name="login_title">Welcome back</string>
+    <string name="register_title">Create your account</string>
+    <string name="display_name_label">Display name</string>
+    <string name="email_label">Email</string>
+    <string name="password_label">Password</string>
+    <string name="login_action">Log in</string>
+    <string name="register_action">Register</string>
+    <string name="open_register_action">Need an account? Register</string>
+    <string name="open_login_action">Already have an account? Log in</string>
+    <string name="logout_action">Log out</string>
+    <string name="welcome_user">Welcome, %1$s</string>
+    <string name="invalid_credentials_error">Invalid email or password</string>
+    <string name="email_already_used_error">An account with this email already exists</string>
+    <string name="network_error">No internet connection</string>
+    <string name="authentication_unavailable_error">Authentication is temporarily unavailable</string>
+    <string name="logout_error">Could not log out. Please try again.</string>
 </resources>

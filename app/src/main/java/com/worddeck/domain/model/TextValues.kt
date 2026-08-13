@@ -1,12 +1,25 @@
 package com.worddeck.domain.model
 
+import com.worddeck.common.AppError
 import com.worddeck.common.AppResult
+
+private val EMAIL_REGEX = Regex(
+    pattern = "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$",
+)
 
 @JvmInline
 value class EmailAddress private constructor(val value: String) {
     companion object {
-        fun from(raw: String): AppResult<EmailAddress> =
-            TextValueValidator.validate(raw, "email") { EmailAddress(it) }
+        fun from(raw: String): AppResult<EmailAddress> {
+            val normalized = raw.trim()
+            if (normalized.isEmpty()) {
+                return AppResult.Failure(AppError.Validation("email", "must not be blank"))
+            }
+            if (!EMAIL_REGEX.matches(normalized)) {
+                return AppResult.Failure(AppError.Validation("email", "has invalid format"))
+            }
+            return AppResult.Success(EmailAddress(normalized))
+        }
     }
 }
 
