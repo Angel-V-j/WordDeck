@@ -1,17 +1,19 @@
 package com.worddeck.feature.home
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.AlertDialog
@@ -25,7 +27,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -50,22 +51,21 @@ fun HomeScreen(
     onLanguageFilterChange: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(
+    LazyColumn(
         modifier = modifier
             .fillMaxSize()
             .statusBarsPadding()
             .navigationBarsPadding()
             .padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+        item {
             Text(
                 text = stringResource(R.string.your_decks_title),
                 style = MaterialTheme.typography.headlineMedium,
             )
+        }
+        item {
             Row {
                 TextButton(onClick = onCreateDeck) {
                     Text(stringResource(R.string.new_deck_action))
@@ -75,44 +75,51 @@ fun HomeScreen(
                 }
             }
         }
-
-        OutlinedTextField(
-            value = uiState.searchQuery,
-            onValueChange = onSearchQueryChange,
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text(stringResource(R.string.search_decks_label)) },
-            singleLine = true,
-        )
-        OutlinedTextField(
-            value = uiState.categoryFilter,
-            onValueChange = onCategoryFilterChange,
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text(stringResource(R.string.category_filter_label)) },
-            singleLine = true,
-        )
-        OutlinedTextField(
-            value = uiState.languageFilter,
-            onValueChange = onLanguageFilterChange,
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text(stringResource(R.string.language_filter_label)) },
-            singleLine = true,
-        )
+        item {
+            OutlinedTextField(
+                value = uiState.searchQuery,
+                onValueChange = onSearchQueryChange,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text(stringResource(R.string.search_decks_label)) },
+                singleLine = true,
+            )
+        }
+        item {
+            OutlinedTextField(
+                value = uiState.categoryFilter,
+                onValueChange = onCategoryFilterChange,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text(stringResource(R.string.category_filter_label)) },
+                singleLine = true,
+            )
+        }
+        item {
+            OutlinedTextField(
+                value = uiState.languageFilter,
+                onValueChange = onLanguageFilterChange,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text(stringResource(R.string.language_filter_label)) },
+                singleLine = true,
+            )
+        }
 
         when (uiState.status) {
             OperationStatus.IDLE,
             OperationStatus.LOADING,
-            -> CenteredContent {
-                CircularProgressIndicator()
-                Text(stringResource(R.string.loading_decks))
+            -> item {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    CircularProgressIndicator()
+                    Text(stringResource(R.string.loading_decks))
+                }
             }
-            OperationStatus.ERROR -> CenteredContent {
+            OperationStatus.ERROR -> item {
                 Text(
                     text = stringResource(R.string.deck_list_error),
                     color = MaterialTheme.colorScheme.error,
                 )
             }
             OperationStatus.SUCCESS -> if (uiState.visibleDecks.isEmpty()) {
-                CenteredContent {
+                item {
                     val message = if (uiState.decks.isEmpty()) {
                         R.string.empty_decks
                     } else {
@@ -121,13 +128,8 @@ fun HomeScreen(
                     Text(stringResource(message))
                 }
             } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    items(uiState.visibleDecks, key = { it.id.value }) { deck ->
-                        DeckItem(deck = deck, onClick = { onDeckClick(deck.id) })
-                    }
+                items(uiState.visibleDecks, key = { it.id.value }) { deck ->
+                    DeckItem(deck = deck, onClick = { onDeckClick(deck.id) })
                 }
             }
         }
@@ -174,12 +176,90 @@ fun DeckDetailsScreen(
         )
     }
 
-    Column(
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
             .statusBarsPadding()
             .navigationBarsPadding()
             .padding(24.dp),
+    ) {
+        if (deck == null) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                TextButton(onClick = onBack, enabled = !isDeleting) {
+                    Text(stringResource(R.string.back_action))
+                }
+                Text(
+                    text = stringResource(R.string.deck_details_title),
+                    style = MaterialTheme.typography.headlineMedium,
+                )
+                Text(stringResource(R.string.deck_not_found))
+            }
+        } else if (maxWidth > maxHeight) {
+            Row(
+                modifier = Modifier.fillMaxSize(),
+                horizontalArrangement = Arrangement.spacedBy(24.dp),
+            ) {
+                DeckSummary(
+                    deck = deck,
+                    uiState = uiState,
+                    isDeleting = isDeleting,
+                    onEdit = onEdit,
+                    onDeleteRequest = { showDeleteConfirmation = true },
+                    onBack = onBack,
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .verticalScroll(rememberScrollState()),
+                )
+                FlashcardSection(
+                    uiState = flashcardUiState,
+                    onSave = onSaveFlashcard,
+                    onDelete = onDeleteFlashcard,
+                    onClearOperation = onClearFlashcardOperation,
+                    onSearchQueryChange = onFlashcardSearchQueryChange,
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
+                )
+            }
+        } else {
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                DeckSummary(
+                    deck = deck,
+                    uiState = uiState,
+                    isDeleting = isDeleting,
+                    onEdit = onEdit,
+                    onDeleteRequest = { showDeleteConfirmation = true },
+                    onBack = onBack,
+                )
+                FlashcardSection(
+                    uiState = flashcardUiState,
+                    onSave = onSaveFlashcard,
+                    onDelete = onDeleteFlashcard,
+                    onClearOperation = onClearFlashcardOperation,
+                    onSearchQueryChange = onFlashcardSearchQueryChange,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DeckSummary(
+    deck: Deck,
+    uiState: DeckUiState,
+    isDeleting: Boolean,
+    onEdit: () -> Unit,
+    onDeleteRequest: () -> Unit,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         TextButton(onClick = onBack, enabled = !isDeleting) {
@@ -189,39 +269,26 @@ fun DeckDetailsScreen(
             text = stringResource(R.string.deck_details_title),
             style = MaterialTheme.typography.headlineMedium,
         )
-        if (deck == null) {
-            Text(stringResource(R.string.deck_not_found))
-        } else {
-            Text(deck.title.value, style = MaterialTheme.typography.titleLarge)
-            DeckMetadata(deck)
+        Text(deck.title.value, style = MaterialTheme.typography.titleLarge)
+        DeckMetadata(deck)
+        Row {
             TextButton(onClick = onEdit, enabled = !isDeleting) {
                 Text(stringResource(R.string.edit_deck_action))
             }
-            TextButton(
-                onClick = { showDeleteConfirmation = true },
-                enabled = !isDeleting,
-            ) {
+            TextButton(onClick = onDeleteRequest, enabled = !isDeleting) {
                 Text(
                     text = stringResource(R.string.delete_deck_action),
                     color = MaterialTheme.colorScheme.error,
                 )
             }
-            if (isDeleting) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-            }
-            if (uiState.error != null) {
-                Text(
-                    text = stringResource(R.string.delete_deck_error),
-                    color = MaterialTheme.colorScheme.error,
-                )
-            }
-            FlashcardSection(
-                uiState = flashcardUiState,
-                onSave = onSaveFlashcard,
-                onDelete = onDeleteFlashcard,
-                onClearOperation = onClearFlashcardOperation,
-                onSearchQueryChange = onFlashcardSearchQueryChange,
-                modifier = Modifier.weight(1f),
+        }
+        if (isDeleting) {
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        }
+        if (uiState.error != null) {
+            Text(
+                text = stringResource(R.string.delete_deck_error),
+                color = MaterialTheme.colorScheme.error,
             )
         }
     }
@@ -252,16 +319,5 @@ private fun DeckMetadata(deck: Deck) {
     }
     deck.category?.let {
         Text(it.value, style = MaterialTheme.typography.bodySmall)
-    }
-}
-
-@Composable
-private fun CenteredContent(content: @Composable ColumnScope.() -> Unit) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            content = content,
-        )
     }
 }
