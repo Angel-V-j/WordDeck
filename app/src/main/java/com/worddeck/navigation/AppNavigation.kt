@@ -22,6 +22,7 @@ import com.worddeck.common.OperationStatus
 import com.worddeck.domain.model.User
 import com.worddeck.domain.model.Deck
 import com.worddeck.domain.repository.DeckRepository
+import com.worddeck.domain.repository.FlashcardRepository
 import com.worddeck.feature.auth.AuthUiState
 import com.worddeck.feature.auth.LoginScreen
 import com.worddeck.feature.auth.ProfileScreen
@@ -29,6 +30,8 @@ import com.worddeck.feature.auth.RegisterScreen
 import com.worddeck.feature.decks.DeckEditorScreen
 import com.worddeck.feature.decks.DeckUiState
 import com.worddeck.feature.decks.DeckViewModel
+import com.worddeck.feature.decks.FlashcardUiState
+import com.worddeck.feature.decks.FlashcardViewModel
 import com.worddeck.feature.home.DeckDetailsScreen
 import com.worddeck.feature.home.HomeScreen
 import com.worddeck.feature.home.HomeUiState
@@ -54,6 +57,7 @@ fun AppNavigation(
     uiState: AuthUiState,
     homeUiState: HomeUiState,
     deckRepository: DeckRepository,
+    flashcardRepository: FlashcardRepository,
     idGenerator: IdGenerator,
     clock: Clock,
     onLogin: (email: String, password: String) -> Unit,
@@ -77,6 +81,7 @@ fun AppNavigation(
             uiState = uiState,
             homeUiState = homeUiState,
             deckRepository = deckRepository,
+            flashcardRepository = flashcardRepository,
             idGenerator = idGenerator,
             clock = clock,
             user = currentUser,
@@ -129,6 +134,7 @@ private fun MainNavigation(
     uiState: AuthUiState,
     homeUiState: HomeUiState,
     deckRepository: DeckRepository,
+    flashcardRepository: FlashcardRepository,
     idGenerator: IdGenerator,
     clock: Clock,
     user: User,
@@ -173,8 +179,12 @@ private fun MainNavigation(
                 DeckDetailsScreen(
                     deck = null,
                     uiState = DeckUiState(),
+                    flashcardUiState = FlashcardUiState(),
                     onEdit = {},
                     onDelete = {},
+                    onSaveFlashcard = { _, _, _, _, _ -> },
+                    onDeleteFlashcard = {},
+                    onClearFlashcardOperation = {},
                     onBack = { navController.popBackStack() },
                 )
             } else {
@@ -190,6 +200,17 @@ private fun MainNavigation(
                     )
                 }
                 val detailsState by detailsViewModel.uiState.collectAsStateWithLifecycle()
+                val flashcardViewModel = viewModel<FlashcardViewModel>(
+                    key = "cards-${deck.id.value}",
+                ) {
+                    FlashcardViewModel(
+                        flashcardRepository = flashcardRepository,
+                        deckId = deck.id,
+                        idGenerator = idGenerator,
+                        clock = clock,
+                    )
+                }
+                val flashcardState by flashcardViewModel.uiState.collectAsStateWithLifecycle()
                 LaunchedEffect(detailsState.operationStatus) {
                     if (detailsState.operationStatus == OperationStatus.SUCCESS) {
                         navController.popBackStack()
@@ -198,10 +219,14 @@ private fun MainNavigation(
                 DeckDetailsScreen(
                     deck = deck,
                     uiState = detailsState,
+                    flashcardUiState = flashcardState,
                     onEdit = {
                         navController.navigate(AppDestination.editDeck(deck.id.value))
                     },
                     onDelete = detailsViewModel::delete,
+                    onSaveFlashcard = flashcardViewModel::save,
+                    onDeleteFlashcard = flashcardViewModel::delete,
+                    onClearFlashcardOperation = flashcardViewModel::clearOperation,
                     onBack = { navController.popBackStack() },
                 )
             }
@@ -227,8 +252,12 @@ private fun MainNavigation(
                 DeckDetailsScreen(
                     deck = null,
                     uiState = DeckUiState(),
+                    flashcardUiState = FlashcardUiState(),
                     onEdit = {},
                     onDelete = {},
+                    onSaveFlashcard = { _, _, _, _, _ -> },
+                    onDeleteFlashcard = {},
+                    onClearFlashcardOperation = {},
                     onBack = { navController.popBackStack() },
                 )
             } else {

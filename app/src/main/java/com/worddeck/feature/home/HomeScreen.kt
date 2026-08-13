@@ -32,7 +32,11 @@ import com.worddeck.R
 import com.worddeck.common.OperationStatus
 import com.worddeck.domain.model.Deck
 import com.worddeck.domain.model.DeckId
+import com.worddeck.domain.model.CardId
+import com.worddeck.domain.model.Flashcard
 import com.worddeck.feature.decks.DeckUiState
+import com.worddeck.feature.decks.FlashcardSection
+import com.worddeck.feature.decks.FlashcardUiState
 
 @Composable
 fun HomeScreen(
@@ -103,8 +107,12 @@ fun HomeScreen(
 fun DeckDetailsScreen(
     deck: Deck?,
     uiState: DeckUiState,
+    flashcardUiState: FlashcardUiState,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
+    onSaveFlashcard: (Flashcard?, String, String, String, String) -> Unit,
+    onDeleteFlashcard: (CardId) -> Unit,
+    onClearFlashcardOperation: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -175,6 +183,13 @@ fun DeckDetailsScreen(
                     color = MaterialTheme.colorScheme.error,
                 )
             }
+            FlashcardSection(
+                uiState = flashcardUiState,
+                onSave = onSaveFlashcard,
+                onDelete = onDeleteFlashcard,
+                onClearOperation = onClearFlashcardOperation,
+                modifier = Modifier.weight(1f),
+            )
         }
     }
 }
