@@ -12,7 +12,10 @@ import com.worddeck.domain.model.DeckTitle
 import com.worddeck.domain.model.DeckVisibility
 import com.worddeck.domain.model.CardId
 import com.worddeck.domain.model.Flashcard
+import com.worddeck.domain.model.DisplayName
+import com.worddeck.domain.model.User
 import com.worddeck.domain.model.UserId
+import com.worddeck.domain.repository.AuthenticationRepository
 import com.worddeck.domain.repository.DeckRepository
 import com.worddeck.domain.repository.FlashcardRepository
 import com.worddeck.testing.MainDispatcherRule
@@ -45,6 +48,7 @@ class HomeViewModelTest {
         val decks = listOf(createDeck())
         val repository = FakeDeckRepository(AppResult.Success(decks))
         val appContainer = AppContainer(
+            authenticationRepository = UnusedAuthenticationRepository,
             deckRepository = repository,
             flashcardRepository = UnusedFlashcardRepository,
         )
@@ -100,6 +104,20 @@ private fun createDeck(): Deck = Deck(
 private fun userId(): UserId = UserId.from("user-1").successValue()
 
 private fun <T> AppResult<T>.successValue(): T = (this as AppResult.Success).value
+
+private object UnusedAuthenticationRepository : AuthenticationRepository {
+    override fun observeCurrentUser(): Flow<AppResult<User?>> = unusedDependency()
+
+    override suspend fun register(
+        displayName: DisplayName,
+        email: String,
+        password: String,
+    ): AppResult<User> = unusedDependency()
+
+    override suspend fun login(email: String, password: String): AppResult<User> = unusedDependency()
+
+    override suspend fun logout(): AppResult<Unit> = unusedDependency()
+}
 
 private object UnusedFlashcardRepository : FlashcardRepository {
     override fun observeByDeck(deckId: DeckId): Flow<AppResult<List<Flashcard>>> = unusedDependency()

@@ -15,10 +15,11 @@ placeholder home екран, за да валидира Compose, Material 3 и N
 Compose конфигурацията.
 
 Подготвени са базов ViewModel, Room local слой, manual `AppContainer` и
-development връзка към Firebase Auth Emulator. На този етап умишлено няма:
+Firebase Authentication repository, тествано чрез Auth Emulator. На този етап
+умишлено няма:
 
 - login или registration flow;
-- Firebase authentication repository или реални потребители;
+- auth ViewModel и работещи login/register екрани;
 - Firestore, production Firebase configuration или credentials;
 - SM-2 алгоритъм, study session или statistics;
 - synchronization между устройства;

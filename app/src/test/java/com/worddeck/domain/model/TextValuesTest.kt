@@ -26,6 +26,14 @@ class TextValuesTest {
     }
 
     @Test
+    fun `blank display name returns validation failure`() {
+        assertEquals(
+            AppResult.Failure(AppError.Validation("display name", "must not be blank")),
+            DisplayName.from("   "),
+        )
+    }
+
+    @Test
     fun `blank optional text is normalized to null`() {
         val result = DeckCategory.from("   ")
 

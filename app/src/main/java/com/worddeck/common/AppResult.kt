@@ -8,4 +8,11 @@ sealed interface AppResult<out T> {
 sealed interface AppError {
     data class Validation(val field: String, val reason: String) : AppError
     data class Unavailable(val resource: String) : AppError
+
+    data object NetworkUnavailable : AppError
+
+    sealed interface Authentication : AppError {
+        data object InvalidCredentials : Authentication
+        data object EmailAlreadyInUse : Authentication
+    }
 }

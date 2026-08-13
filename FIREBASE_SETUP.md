@@ -42,5 +42,6 @@ Keep the Auth Emulator running, start an Android emulator and execute:
 .\gradlew.bat connectedDebugAndroidTest
 ```
 
-`FirebaseAuthEmulatorTest` creates and removes a temporary emulator-only user.
-It never targets production user data.
+`FirebaseAuthRepositoryTest` exercises registration, login, logout
+and session observation using emulator-only users. It never targets production
+user data.
