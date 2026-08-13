@@ -1,5 +1,8 @@
 # WordDeck
 
+Firebase Authentication development and Auth Emulator setup are described in
+[`FIREBASE_SETUP.md`](FIREBASE_SETUP.md).
+
 WordDeck е Android приложение за изучаване на чужди езици чрез spaced
 repetition. В момента repository-то съдържа само архитектурен skeleton за
 дипломната работа, а не завършена функционалност.
@@ -11,19 +14,15 @@ feature, domain и data слоевете. Минималният Compose entry p
 placeholder home екран, за да валидира Compose, Material 3 и Navigation
 Compose конфигурацията.
 
-На този етап умишлено няма:
+Подготвени са базов ViewModel, Room local слой, manual `AppContainer` и
+development връзка към Firebase Auth Emulator. На този етап умишлено няма:
 
 - login или registration flow;
-- ViewModel логика;
-- Room database, entities, DAO или migrations;
-- Firebase Authentication, Firestore или credentials;
-- repository implementations;
+- Firebase authentication repository или реални потребители;
+- Firestore, production Firebase configuration или credentials;
 - SM-2 алгоритъм, study session или statistics;
 - synchronization между устройства;
 - dependency injection framework.
-
-Room, Firebase и lifecycle/ViewModel зависимости ще бъдат добавяни едва
-когато започне съответната реална имплементация.
 
 ## Структура
 
@@ -116,17 +115,17 @@ Firebase по-късно ще синхронизира cloud данните, б�
 
 Бъдещият scheduler ще бъде чист Kotlin код, отделен от Android, Room и
 Firebase, за да може да се unit-test-ва независимо. Старият custom scheduler
-не е пренесен. `ReviewEvent` и `ReviewState` ще бъдат добавени след като се
-фиксират SM-2 state полетата и mapping-ът между UI оценките и SM-2 quality
-стойностите; skeleton-ът не предполага това решение предварително.
+не е пренесен. `ReviewEvent` и `ReviewState` вече могат да се съхраняват
+локално, но SM-2 update логиката и mapping-ът от UI оценка към quality `0..5`
+още не са имплементирани.
 
 ## Локална конфигурация и secrets
 
-`local.properties` се създава локално от Android Studio и е игнориран. При
-бъдещо Firebase свързване `app/google-services.json` също трябва да бъде
-добавен само локално. Не записвайте API keys, private keys, passwords,
-tokens, signing stores или service-account credentials в source code или
-README.
+`local.properties` се създава локално от Android Studio и е игнориран.
+`app/google-services.json` също се добавя само локално според
+[`FIREBASE_SETUP.md`](FIREBASE_SETUP.md). Не записвайте API keys, private keys,
+passwords, tokens, signing stores или service-account credentials в source
+code или README.
 
 ## Build
 

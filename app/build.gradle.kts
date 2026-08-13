@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.google.services)
 }
 
 android {
@@ -33,6 +34,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_11
     }
     buildFeatures {
+        buildConfig = true
         compose = true
     }
 
@@ -55,6 +57,8 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.auth)
     ksp(libs.androidx.room.compiler)
 
     testImplementation(libs.junit)
