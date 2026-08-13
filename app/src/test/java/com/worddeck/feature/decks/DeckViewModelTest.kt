@@ -28,7 +28,7 @@ import org.junit.Rule
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class DeckEditorViewModelTest {
+class DeckViewModelTest {
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
@@ -52,7 +52,7 @@ class DeckEditorViewModelTest {
             deck(id = "deck-1", createdAt = NOW, updatedAt = NOW),
             repository.savedDeck,
         )
-        assertEquals(OperationStatus.SUCCESS, viewModel.uiState.value.saveStatus)
+        assertEquals(OperationStatus.SUCCESS, viewModel.uiState.value.operationStatus)
     }
 
     @Test
@@ -69,7 +69,7 @@ class DeckEditorViewModelTest {
 
         assertEquals("must not be blank", viewModel.uiState.value.titleError)
         assertNull(repository.savedDeck)
-        assertEquals(OperationStatus.ERROR, viewModel.uiState.value.saveStatus)
+        assertEquals(OperationStatus.ERROR, viewModel.uiState.value.operationStatus)
     }
 
     @Test
@@ -135,14 +135,52 @@ class DeckEditorViewModelTest {
         advanceUntilIdle()
 
         assertEquals(error, viewModel.uiState.value.error)
-        assertEquals(OperationStatus.ERROR, viewModel.uiState.value.saveStatus)
+        assertEquals(OperationStatus.ERROR, viewModel.uiState.value.operationStatus)
+    }
+
+    @Test
+    fun `delete removes the existing deck`() = runTest {
+        val existingDeck = deck(
+            id = "existing-deck",
+            createdAt = Timestamp(1_000),
+            updatedAt = Timestamp(2_000),
+        )
+        val repository = FakeDeckRepository()
+        val viewModel = createViewModel(repository, existingDeck = existingDeck)
+
+        viewModel.delete()
+
+        assertEquals(OperationStatus.LOADING, viewModel.uiState.value.operationStatus)
+        advanceUntilIdle()
+        assertEquals(existingDeck.id, repository.deletedDeckId)
+        assertEquals(OperationStatus.SUCCESS, viewModel.uiState.value.operationStatus)
+    }
+
+    @Test
+    fun `delete failure is exposed to the screen`() = runTest {
+        val error = AppError.Unavailable("deck")
+        val existingDeck = deck(
+            id = "existing-deck",
+            createdAt = Timestamp(1_000),
+            updatedAt = Timestamp(2_000),
+        )
+        val repository = FakeDeckRepository(
+            deleteResult = AppResult.Failure(error),
+        )
+        val viewModel = createViewModel(repository, existingDeck = existingDeck)
+
+        viewModel.delete()
+        advanceUntilIdle()
+
+        assertEquals(OperationStatus.ERROR, viewModel.uiState.value.operationStatus)
+        assertEquals(error, viewModel.uiState.value.error)
     }
 
     private fun createViewModel(
         repository: FakeDeckRepository,
         existingDeck: Deck? = null,
         idGenerator: IdGenerator = IdGenerator { "deck-1" },
-    ) = DeckEditorViewModel(
+    ) = DeckViewModel(
         deckRepository = repository,
         ownerId = USER_ID,
         idGenerator = idGenerator,
@@ -173,8 +211,11 @@ private fun deck(
 
 private class FakeDeckRepository(
     private val saveResult: AppResult<Unit> = AppResult.Success(Unit),
+    private val deleteResult: AppResult<Unit> = AppResult.Success(Unit),
 ) : DeckRepository {
     var savedDeck: Deck? = null
+        private set
+    var deletedDeckId: DeckId? = null
         private set
 
     override fun observeByOwner(ownerId: UserId): Flow<AppResult<List<Deck>>> =
@@ -188,8 +229,10 @@ private class FakeDeckRepository(
         return saveResult
     }
 
-    override suspend fun delete(id: DeckId): AppResult<Unit> =
-        AppResult.Success(Unit)
+    override suspend fun delete(id: DeckId): AppResult<Unit> {
+        deletedDeckId = id
+        return deleteResult
+    }
 }
 
 private fun <T> AppResult<T>.successValue(): T = (this as AppResult.Success).value

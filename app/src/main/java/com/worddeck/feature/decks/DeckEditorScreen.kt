@@ -30,14 +30,14 @@ import com.worddeck.common.OperationStatus
 
 @Composable
 fun DeckEditorScreen(
-    uiState: DeckEditorUiState,
+    uiState: DeckUiState,
     onSave: (title: String, sourceLanguage: String, targetLanguage: String, category: String) -> Unit,
     onSaved: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val isSaving = uiState.saveStatus == OperationStatus.LOADING
-    val isSaved = uiState.saveStatus == OperationStatus.SUCCESS
+    val isSaving = uiState.operationStatus == OperationStatus.LOADING
+    val isSaved = uiState.operationStatus == OperationStatus.SUCCESS
     var title by rememberSaveable(uiState.isEditing) { mutableStateOf(uiState.title) }
     var sourceLanguage by rememberSaveable(uiState.isEditing) {
         mutableStateOf(uiState.sourceLanguage)

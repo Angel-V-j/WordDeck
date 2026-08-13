@@ -20,6 +20,12 @@
     <string name="back_action">Back</string>
     <string name="new_deck_action">New deck</string>
     <string name="edit_deck_action">Edit deck</string>
+    <string name="delete_deck_action">Delete deck</string>
+    <string name="delete_deck_dialog_title">Delete deck?</string>
+    <string name="delete_deck_dialog_message">Deleting this deck also removes its cards and review history stored on this device.</string>
+    <string name="delete_action">Delete</string>
+    <string name="cancel_action">Cancel</string>
+    <string name="delete_deck_error">Could not delete the deck</string>
     <string name="create_deck_title">Create deck</string>
     <string name="edit_deck_title">Edit deck</string>
     <string name="deck_title_label">Title</string>

@@ -20,26 +20,26 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-data class DeckEditorUiState(
+data class DeckUiState(
     val title: String = "",
     val sourceLanguage: String = "",
     val targetLanguage: String = "",
     val category: String = "",
     val isEditing: Boolean = false,
-    val saveStatus: OperationStatus = OperationStatus.IDLE,
+    val operationStatus: OperationStatus = OperationStatus.IDLE,
     val titleError: String? = null,
     val error: AppError? = null,
 )
 
-class DeckEditorViewModel(
+class DeckViewModel(
     private val deckRepository: DeckRepository,
     private val ownerId: UserId,
     private val idGenerator: IdGenerator,
     private val clock: Clock,
     private val existingDeck: Deck? = null,
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow(existingDeck.toEditorState())
-    val uiState: StateFlow<DeckEditorUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow(existingDeck.toUiState())
+    val uiState: StateFlow<DeckUiState> = _uiState.asStateFlow()
 
     fun save(
         title: String,
@@ -47,7 +47,7 @@ class DeckEditorViewModel(
         targetLanguage: String,
         category: String,
     ) {
-        if (_uiState.value.saveStatus == OperationStatus.LOADING) return
+        if (_uiState.value.operationStatus == OperationStatus.LOADING) return
 
         val validationResult = validateFields(
             title = title,
@@ -62,16 +62,38 @@ class DeckEditorViewModel(
         }
     }
 
+    fun delete() {
+        if (_uiState.value.operationStatus == OperationStatus.LOADING) return
+
+        val deckId = existingDeck?.id ?: return
+        _uiState.value = _uiState.value.copy(
+            operationStatus = OperationStatus.LOADING,
+            titleError = null,
+            error = null,
+        )
+        viewModelScope.launch {
+            when (val result = deckRepository.delete(deckId)) {
+                is AppResult.Success -> _uiState.value = _uiState.value.copy(
+                    operationStatus = OperationStatus.SUCCESS,
+                )
+                is AppResult.Failure -> _uiState.value = _uiState.value.copy(
+                    operationStatus = OperationStatus.ERROR,
+                    error = result.error,
+                )
+            }
+        }
+    }
+
     private fun showValidationFailure(error: AppError) {
         if (error is AppError.Validation && error.field == "deck title") {
             _uiState.value = _uiState.value.copy(
-                saveStatus = OperationStatus.ERROR,
+                operationStatus = OperationStatus.ERROR,
                 titleError = error.reason,
                 error = null,
             )
         } else {
             _uiState.value = _uiState.value.copy(
-                saveStatus = OperationStatus.ERROR,
+                operationStatus = OperationStatus.ERROR,
                 titleError = null,
                 error = error,
             )
@@ -82,17 +104,17 @@ class DeckEditorViewModel(
         val deck = createOrUpdateDeck(fields) ?: return
 
         _uiState.value = _uiState.value.copy(
-            saveStatus = OperationStatus.LOADING,
+            operationStatus = OperationStatus.LOADING,
             titleError = null,
             error = null,
         )
         viewModelScope.launch {
             when (val result = deckRepository.save(deck)) {
                 is AppResult.Success -> _uiState.value = _uiState.value.copy(
-                    saveStatus = OperationStatus.SUCCESS,
+                    operationStatus = OperationStatus.SUCCESS,
                 )
                 is AppResult.Failure -> _uiState.value = _uiState.value.copy(
-                    saveStatus = OperationStatus.ERROR,
+                    operationStatus = OperationStatus.ERROR,
                     error = result.error,
                 )
             }
@@ -117,7 +139,7 @@ class DeckEditorViewModel(
             is AppResult.Success -> idResult.value
             is AppResult.Failure -> {
                 _uiState.value = _uiState.value.copy(
-                    saveStatus = OperationStatus.ERROR,
+                    operationStatus = OperationStatus.ERROR,
                     error = idResult.error,
                 )
                 return null
@@ -185,10 +207,10 @@ private fun validateFields(
     )
 }
 
-private fun Deck?.toEditorState(): DeckEditorUiState = if (this == null) {
-    DeckEditorUiState()
+private fun Deck?.toUiState(): DeckUiState = if (this == null) {
+    DeckUiState()
 } else {
-    DeckEditorUiState(
+    DeckUiState(
         title = title.value,
         sourceLanguage = sourceLanguage?.value.orEmpty(),
         targetLanguage = targetLanguage?.value.orEmpty(),

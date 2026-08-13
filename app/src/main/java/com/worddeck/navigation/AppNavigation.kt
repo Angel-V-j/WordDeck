@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,7 +27,8 @@ import com.worddeck.feature.auth.LoginScreen
 import com.worddeck.feature.auth.ProfileScreen
 import com.worddeck.feature.auth.RegisterScreen
 import com.worddeck.feature.decks.DeckEditorScreen
-import com.worddeck.feature.decks.DeckEditorViewModel
+import com.worddeck.feature.decks.DeckUiState
+import com.worddeck.feature.decks.DeckViewModel
 import com.worddeck.feature.home.DeckDetailsScreen
 import com.worddeck.feature.home.HomeScreen
 import com.worddeck.feature.home.HomeUiState
@@ -167,15 +169,42 @@ private fun MainNavigation(
         ) { backStackEntry ->
             val selectedId = backStackEntry.arguments?.getString("deckId")
             val deck = homeUiState.decks.firstOrNull { it.id.value == selectedId }
-            DeckDetailsScreen(
-                deck = deck,
-                onEdit = {
-                    if (deck != null) {
-                        navController.navigate(AppDestination.editDeck(deck.id.value))
+            if (deck == null) {
+                DeckDetailsScreen(
+                    deck = null,
+                    uiState = DeckUiState(),
+                    onEdit = {},
+                    onDelete = {},
+                    onBack = { navController.popBackStack() },
+                )
+            } else {
+                val detailsViewModel = viewModel<DeckViewModel>(
+                    key = "details-${deck.id.value}",
+                ) {
+                    DeckViewModel(
+                        deckRepository = deckRepository,
+                        ownerId = user.id,
+                        idGenerator = idGenerator,
+                        clock = clock,
+                        existingDeck = deck,
+                    )
+                }
+                val detailsState by detailsViewModel.uiState.collectAsStateWithLifecycle()
+                LaunchedEffect(detailsState.operationStatus) {
+                    if (detailsState.operationStatus == OperationStatus.SUCCESS) {
+                        navController.popBackStack()
                     }
-                },
-                onBack = { navController.popBackStack() },
-            )
+                }
+                DeckDetailsScreen(
+                    deck = deck,
+                    uiState = detailsState,
+                    onEdit = {
+                        navController.navigate(AppDestination.editDeck(deck.id.value))
+                    },
+                    onDelete = detailsViewModel::delete,
+                    onBack = { navController.popBackStack() },
+                )
+            }
         }
         composable(AppDestination.CREATE_DECK) {
             DeckEditorDestination(
@@ -197,7 +226,9 @@ private fun MainNavigation(
             if (deck == null) {
                 DeckDetailsScreen(
                     deck = null,
+                    uiState = DeckUiState(),
                     onEdit = {},
+                    onDelete = {},
                     onBack = { navController.popBackStack() },
                 )
             } else {
@@ -225,8 +256,8 @@ private fun DeckEditorDestination(
     clock: Clock,
     onBack: () -> Unit,
 ) {
-    val editorViewModel = viewModel<DeckEditorViewModel>(key = key) {
-        DeckEditorViewModel(
+    val editorViewModel = viewModel<DeckViewModel>(key = key) {
+        DeckViewModel(
             deckRepository = deckRepository,
             ownerId = user.id,
             idGenerator = idGenerator,
