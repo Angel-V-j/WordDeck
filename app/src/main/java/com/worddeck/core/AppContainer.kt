@@ -2,6 +2,9 @@ package com.worddeck.core
 
 import android.content.Context
 import com.google.firebase.auth.FirebaseAuth
+import com.worddeck.common.Clock
+import com.worddeck.common.IdGenerator
+import com.worddeck.common.Timestamp
 import com.worddeck.data.local.database.WordDeckDatabase
 import com.worddeck.data.remote.firebase.FirebaseAuthRepository
 import com.worddeck.data.repository.LocalDeckRepository
@@ -9,6 +12,7 @@ import com.worddeck.data.repository.LocalFlashcardRepository
 import com.worddeck.domain.repository.AuthenticationRepository
 import com.worddeck.domain.repository.DeckRepository
 import com.worddeck.domain.repository.FlashcardRepository
+import java.util.UUID
 
 /**
  * Application-level dependencies shared by the presentation layer.
@@ -20,6 +24,8 @@ class AppContainer(
     val authenticationRepository: AuthenticationRepository,
     val deckRepository: DeckRepository,
     val flashcardRepository: FlashcardRepository,
+    val idGenerator: IdGenerator = IdGenerator { UUID.randomUUID().toString() },
+    val clock: Clock = Clock { Timestamp(System.currentTimeMillis()) },
 ) {
     constructor(
         database: WordDeckDatabase,

@@ -2,6 +2,7 @@ package com.worddeck.feature.home
 
 import com.worddeck.common.AppError
 import com.worddeck.common.AppResult
+import com.worddeck.common.OperationStatus
 import com.worddeck.common.Timestamp
 import com.worddeck.core.AppContainer
 import com.worddeck.domain.model.Deck
@@ -40,7 +41,7 @@ class HomeViewModelTest {
             ownerId = userId(),
         )
 
-        assertEquals(HomeUiState.Loading, viewModel.uiState.value)
+        assertEquals(OperationStatus.LOADING, viewModel.uiState.value.status)
     }
 
     @Test
@@ -60,7 +61,8 @@ class HomeViewModelTest {
         advanceUntilIdle()
 
         assertEquals(userId(), repository.observedOwnerId)
-        assertEquals(HomeUiState.Content(decks), viewModel.uiState.value)
+        assertEquals(OperationStatus.SUCCESS, viewModel.uiState.value.status)
+        assertEquals(decks, viewModel.uiState.value.decks)
     }
 
     @Test
@@ -72,7 +74,8 @@ class HomeViewModelTest {
 
         advanceUntilIdle()
 
-        assertEquals(HomeUiState.Empty, viewModel.uiState.value)
+        assertEquals(OperationStatus.SUCCESS, viewModel.uiState.value.status)
+        assertEquals(emptyList<Deck>(), viewModel.uiState.value.decks)
     }
 
     @Test
@@ -85,7 +88,8 @@ class HomeViewModelTest {
 
         advanceUntilIdle()
 
-        assertEquals(HomeUiState.Error(error), viewModel.uiState.value)
+        assertEquals(OperationStatus.ERROR, viewModel.uiState.value.status)
+        assertEquals(error, viewModel.uiState.value.error)
     }
 }
 

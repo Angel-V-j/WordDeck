@@ -8,6 +8,8 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.worddeck.core.AppContainer
+import com.worddeck.common.Clock
+import com.worddeck.common.IdGenerator
 import com.worddeck.domain.repository.DeckRepository
 import com.worddeck.feature.auth.AuthViewModel
 import com.worddeck.feature.home.HomeUiState
@@ -23,6 +25,8 @@ fun WordDeckApp(appContainer: AppContainer) {
     WordDeckContent(
         authViewModel = authViewModel,
         deckRepository = appContainer.deckRepository,
+        idGenerator = appContainer.idGenerator,
+        clock = appContainer.clock,
     )
 }
 
@@ -30,11 +34,13 @@ fun WordDeckApp(appContainer: AppContainer) {
 fun WordDeckContent(
     authViewModel: AuthViewModel,
     deckRepository: DeckRepository,
+    idGenerator: IdGenerator,
+    clock: Clock,
 ) {
     val uiState by authViewModel.uiState.collectAsStateWithLifecycle()
     val currentUser = uiState.currentUser
     val homeUiState = if (currentUser == null) {
-        HomeUiState.Loading
+        HomeUiState()
     } else {
         // A new user must not reuse the previous user's deck-list ViewModel.
         val homeViewModel = viewModel<HomeViewModel>(key = "home-${currentUser.id.value}") {
@@ -52,6 +58,9 @@ fun WordDeckContent(
             AppNavigation(
                 uiState = uiState,
                 homeUiState = homeUiState,
+                deckRepository = deckRepository,
+                idGenerator = idGenerator,
+                clock = clock,
                 onLogin = authViewModel::login,
                 onRegister = authViewModel::register,
                 onUpdateDisplayName = authViewModel::updateDisplayName,

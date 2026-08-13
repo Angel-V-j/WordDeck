@@ -34,6 +34,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.worddeck.R
 import com.worddeck.common.AppError
+import com.worddeck.common.OperationStatus
 
 @Composable
 fun LoginScreen(
@@ -42,6 +43,7 @@ fun LoginScreen(
     onOpenRegister: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val isSubmitting = uiState.submitStatus == OperationStatus.LOADING
     var email by rememberSaveable { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
@@ -55,7 +57,7 @@ fun LoginScreen(
             onValueChange = { email = it },
             label = stringResource(R.string.email_label),
             errorReason = uiState.formErrors.email,
-            enabled = !uiState.isSubmitting,
+            enabled = !isSubmitting,
             keyboardType = KeyboardType.Email,
         )
         AuthenticationTextField(
@@ -63,17 +65,17 @@ fun LoginScreen(
             onValueChange = { password = it },
             label = stringResource(R.string.password_label),
             errorReason = uiState.formErrors.password,
-            enabled = !uiState.isSubmitting,
+            enabled = !isSubmitting,
             isPassword = true,
         )
         SubmitButton(
             text = stringResource(R.string.login_action),
-            isLoading = uiState.isSubmitting,
+            isLoading = isSubmitting,
             onClick = { onLogin(email, password) },
         )
         TextButton(
             onClick = onOpenRegister,
-            enabled = !uiState.isSubmitting,
+            enabled = !isSubmitting,
         ) {
             Text(stringResource(R.string.open_register_action))
         }
@@ -87,6 +89,7 @@ fun RegisterScreen(
     onOpenLogin: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val isSubmitting = uiState.submitStatus == OperationStatus.LOADING
     var displayName by rememberSaveable { mutableStateOf("") }
     var email by rememberSaveable { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -101,14 +104,14 @@ fun RegisterScreen(
             onValueChange = { displayName = it },
             label = stringResource(R.string.display_name_label),
             errorReason = uiState.formErrors.displayName,
-            enabled = !uiState.isSubmitting,
+            enabled = !isSubmitting,
         )
         AuthenticationTextField(
             value = email,
             onValueChange = { email = it },
             label = stringResource(R.string.email_label),
             errorReason = uiState.formErrors.email,
-            enabled = !uiState.isSubmitting,
+            enabled = !isSubmitting,
             keyboardType = KeyboardType.Email,
         )
         AuthenticationTextField(
@@ -116,17 +119,17 @@ fun RegisterScreen(
             onValueChange = { password = it },
             label = stringResource(R.string.password_label),
             errorReason = uiState.formErrors.password,
-            enabled = !uiState.isSubmitting,
+            enabled = !isSubmitting,
             isPassword = true,
         )
         SubmitButton(
             text = stringResource(R.string.register_action),
-            isLoading = uiState.isSubmitting,
+            isLoading = isSubmitting,
             onClick = { onRegister(displayName, email, password) },
         )
         TextButton(
             onClick = onOpenLogin,
-            enabled = !uiState.isSubmitting,
+            enabled = !isSubmitting,
         ) {
             Text(stringResource(R.string.open_login_action))
         }

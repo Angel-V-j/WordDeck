@@ -5,18 +5,28 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
+import com.worddeck.common.Clock
+import com.worddeck.common.IdGenerator
+import com.worddeck.common.OperationStatus
 import com.worddeck.domain.model.User
+import com.worddeck.domain.model.Deck
+import com.worddeck.domain.repository.DeckRepository
 import com.worddeck.feature.auth.AuthUiState
 import com.worddeck.feature.auth.LoginScreen
 import com.worddeck.feature.auth.ProfileScreen
 import com.worddeck.feature.auth.RegisterScreen
+import com.worddeck.feature.decks.DeckEditorScreen
+import com.worddeck.feature.decks.DeckEditorViewModel
 import com.worddeck.feature.home.DeckDetailsScreen
 import com.worddeck.feature.home.HomeScreen
 import com.worddeck.feature.home.HomeUiState
@@ -29,14 +39,21 @@ object AppDestination {
     const val HOME = "main/home"
     const val PROFILE = "main/profile"
     const val DECK_DETAILS = "main/decks/{$DECK_ID}"
+    const val CREATE_DECK = "main/decks/create"
+    const val EDIT_DECK = "main/decks/{$DECK_ID}/edit"
 
     fun deckDetails(deckId: String): String = "main/decks/${Uri.encode(deckId)}"
+
+    fun editDeck(deckId: String): String = "main/decks/${Uri.encode(deckId)}/edit"
 }
 
 @Composable
 fun AppNavigation(
     uiState: AuthUiState,
     homeUiState: HomeUiState,
+    deckRepository: DeckRepository,
+    idGenerator: IdGenerator,
+    clock: Clock,
     onLogin: (email: String, password: String) -> Unit,
     onRegister: (displayName: String, email: String, password: String) -> Unit,
     onUpdateDisplayName: (displayName: String) -> Unit,
@@ -46,7 +63,7 @@ fun AppNavigation(
 ) {
     val currentUser = uiState.currentUser
     when {
-        uiState.isSessionLoading -> LoadingScreen(modifier)
+        uiState.sessionStatus == OperationStatus.LOADING -> LoadingScreen(modifier)
         currentUser == null -> AuthNavigation(
             uiState = uiState,
             onLogin = onLogin,
@@ -57,6 +74,9 @@ fun AppNavigation(
         else -> MainNavigation(
             uiState = uiState,
             homeUiState = homeUiState,
+            deckRepository = deckRepository,
+            idGenerator = idGenerator,
+            clock = clock,
             user = currentUser,
             onUpdateDisplayName = onUpdateDisplayName,
             onLogout = onLogout,
@@ -106,6 +126,9 @@ private fun AuthNavigation(
 private fun MainNavigation(
     uiState: AuthUiState,
     homeUiState: HomeUiState,
+    deckRepository: DeckRepository,
+    idGenerator: IdGenerator,
+    clock: Clock,
     user: User,
     onUpdateDisplayName: (String) -> Unit,
     onLogout: () -> Unit,
@@ -123,13 +146,14 @@ private fun MainNavigation(
                 onDeckClick = { deckId ->
                     navController.navigate(AppDestination.deckDetails(deckId.value))
                 },
+                onCreateDeck = { navController.navigate(AppDestination.CREATE_DECK) },
                 onOpenProfile = { navController.navigate(AppDestination.PROFILE) },
             )
         }
         composable(AppDestination.PROFILE) {
             ProfileScreen(
                 user = user,
-                isSubmitting = uiState.isSubmitting,
+                isSubmitting = uiState.submitStatus == OperationStatus.LOADING,
                 displayNameError = uiState.formErrors.displayName,
                 error = uiState.error,
                 onUpdateDisplayName = onUpdateDisplayName,
@@ -142,15 +166,81 @@ private fun MainNavigation(
             arguments = listOf(navArgument("deckId") { type = NavType.StringType }),
         ) { backStackEntry ->
             val selectedId = backStackEntry.arguments?.getString("deckId")
-            val deck = (homeUiState as? HomeUiState.Content)
-                ?.decks
-                ?.firstOrNull { it.id.value == selectedId }
+            val deck = homeUiState.decks.firstOrNull { it.id.value == selectedId }
             DeckDetailsScreen(
                 deck = deck,
+                onEdit = {
+                    if (deck != null) {
+                        navController.navigate(AppDestination.editDeck(deck.id.value))
+                    }
+                },
                 onBack = { navController.popBackStack() },
             )
         }
+        composable(AppDestination.CREATE_DECK) {
+            DeckEditorDestination(
+                key = "create-${user.id.value}",
+                existingDeck = null,
+                user = user,
+                deckRepository = deckRepository,
+                idGenerator = idGenerator,
+                clock = clock,
+                onBack = { navController.popBackStack() },
+            )
+        }
+        composable(
+            route = AppDestination.EDIT_DECK,
+            arguments = listOf(navArgument("deckId") { type = NavType.StringType }),
+        ) { backStackEntry ->
+            val selectedId = backStackEntry.arguments?.getString("deckId")
+            val deck = homeUiState.decks.firstOrNull { it.id.value == selectedId }
+            if (deck == null) {
+                DeckDetailsScreen(
+                    deck = null,
+                    onEdit = {},
+                    onBack = { navController.popBackStack() },
+                )
+            } else {
+                DeckEditorDestination(
+                    key = "edit-${deck.id.value}",
+                    existingDeck = deck,
+                    user = user,
+                    deckRepository = deckRepository,
+                    idGenerator = idGenerator,
+                    clock = clock,
+                    onBack = { navController.popBackStack() },
+                )
+            }
+        }
     }
+}
+
+@Composable
+private fun DeckEditorDestination(
+    key: String,
+    existingDeck: Deck?,
+    user: User,
+    deckRepository: DeckRepository,
+    idGenerator: IdGenerator,
+    clock: Clock,
+    onBack: () -> Unit,
+) {
+    val editorViewModel = viewModel<DeckEditorViewModel>(key = key) {
+        DeckEditorViewModel(
+            deckRepository = deckRepository,
+            ownerId = user.id,
+            idGenerator = idGenerator,
+            clock = clock,
+            existingDeck = existingDeck,
+        )
+    }
+    val editorState by editorViewModel.uiState.collectAsStateWithLifecycle()
+    DeckEditorScreen(
+        uiState = editorState,
+        onSave = editorViewModel::save,
+        onSaved = onBack,
+        onBack = onBack,
+    )
 }
 
 @Composable

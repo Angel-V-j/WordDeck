@@ -2,6 +2,7 @@ package com.worddeck.feature.auth
 
 import com.worddeck.common.AppError
 import com.worddeck.common.AppResult
+import com.worddeck.common.OperationStatus
 import com.worddeck.domain.model.DisplayName
 import com.worddeck.domain.model.EmailAddress
 import com.worddeck.domain.model.User
@@ -14,8 +15,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -28,7 +27,7 @@ class AuthViewModelTest {
     fun `starts with loading session state`() = runTest {
         val viewModel = AuthViewModel(FakeAuthenticationRepository())
 
-        assertTrue(viewModel.uiState.value.isSessionLoading)
+        assertEquals(OperationStatus.LOADING, viewModel.uiState.value.sessionStatus)
     }
 
     @Test
@@ -41,7 +40,7 @@ class AuthViewModelTest {
 
         advanceUntilIdle()
 
-        assertFalse(viewModel.uiState.value.isSessionLoading)
+        assertEquals(OperationStatus.SUCCESS, viewModel.uiState.value.sessionStatus)
         assertEquals(user, viewModel.uiState.value.currentUser)
     }
 
@@ -51,7 +50,7 @@ class AuthViewModelTest {
 
         advanceUntilIdle()
 
-        assertFalse(viewModel.uiState.value.isSessionLoading)
+        assertEquals(OperationStatus.SUCCESS, viewModel.uiState.value.sessionStatus)
         assertEquals(null, viewModel.uiState.value.currentUser)
     }
 
@@ -105,9 +104,9 @@ class AuthViewModelTest {
 
         viewModel.login(email = user.email.value, password = "secret1")
 
-        assertTrue(viewModel.uiState.value.isSubmitting)
+        assertEquals(OperationStatus.LOADING, viewModel.uiState.value.submitStatus)
         advanceUntilIdle()
-        assertFalse(viewModel.uiState.value.isSubmitting)
+        assertEquals(OperationStatus.SUCCESS, viewModel.uiState.value.submitStatus)
         assertEquals(user, viewModel.uiState.value.currentUser)
     }
 
@@ -121,7 +120,7 @@ class AuthViewModelTest {
         viewModel.login(email = "maria@example.com", password = "wrong-password")
         advanceUntilIdle()
 
-        assertFalse(viewModel.uiState.value.isSubmitting)
+        assertEquals(OperationStatus.ERROR, viewModel.uiState.value.submitStatus)
         assertEquals(error, viewModel.uiState.value.error)
         assertEquals(null, viewModel.uiState.value.currentUser)
     }

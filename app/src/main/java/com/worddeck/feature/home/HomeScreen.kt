@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.worddeck.R
+import com.worddeck.common.OperationStatus
 import com.worddeck.domain.model.Deck
 import com.worddeck.domain.model.DeckId
 
@@ -30,6 +31,7 @@ import com.worddeck.domain.model.DeckId
 fun HomeScreen(
     uiState: HomeUiState,
     onDeckClick: (DeckId) -> Unit,
+    onCreateDeck: () -> Unit,
     onOpenProfile: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -49,31 +51,41 @@ fun HomeScreen(
                 text = stringResource(R.string.your_decks_title),
                 style = MaterialTheme.typography.headlineMedium,
             )
-            TextButton(onClick = onOpenProfile) {
-                Text(stringResource(R.string.profile_title))
+            Row {
+                TextButton(onClick = onCreateDeck) {
+                    Text(stringResource(R.string.new_deck_action))
+                }
+                TextButton(onClick = onOpenProfile) {
+                    Text(stringResource(R.string.profile_title))
+                }
             }
         }
 
-        when (uiState) {
-            HomeUiState.Loading -> CenteredContent {
+        when (uiState.status) {
+            OperationStatus.IDLE,
+            OperationStatus.LOADING,
+            -> CenteredContent {
                 CircularProgressIndicator()
                 Text(stringResource(R.string.loading_decks))
             }
-            HomeUiState.Empty -> CenteredContent {
-                Text(stringResource(R.string.empty_decks))
-            }
-            is HomeUiState.Error -> CenteredContent {
+            OperationStatus.ERROR -> CenteredContent {
                 Text(
                     text = stringResource(R.string.deck_list_error),
                     color = MaterialTheme.colorScheme.error,
                 )
             }
-            is HomeUiState.Content -> LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                items(uiState.decks, key = { it.id.value }) { deck ->
-                    DeckItem(deck = deck, onClick = { onDeckClick(deck.id) })
+            OperationStatus.SUCCESS -> if (uiState.decks.isEmpty()) {
+                CenteredContent {
+                    Text(stringResource(R.string.empty_decks))
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    items(uiState.decks, key = { it.id.value }) { deck ->
+                        DeckItem(deck = deck, onClick = { onDeckClick(deck.id) })
+                    }
                 }
             }
         }
@@ -83,6 +95,7 @@ fun HomeScreen(
 @Composable
 fun DeckDetailsScreen(
     deck: Deck?,
+    onEdit: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -106,6 +119,9 @@ fun DeckDetailsScreen(
         } else {
             Text(deck.title.value, style = MaterialTheme.typography.titleLarge)
             DeckMetadata(deck)
+            TextButton(onClick = onEdit) {
+                Text(stringResource(R.string.edit_deck_action))
+            }
         }
     }
 }

@@ -18,6 +18,17 @@
     <string name="deck_details_title">Deck details</string>
     <string name="deck_not_found">Deck not found</string>
     <string name="back_action">Back</string>
+    <string name="new_deck_action">New deck</string>
+    <string name="edit_deck_action">Edit deck</string>
+    <string name="create_deck_title">Create deck</string>
+    <string name="edit_deck_title">Edit deck</string>
+    <string name="deck_title_label">Title</string>
+    <string name="source_language_label">Source language (optional)</string>
+    <string name="target_language_label">Target language (optional)</string>
+    <string name="deck_category_label">Category (optional)</string>
+    <string name="deck_title_error">Title %1$s</string>
+    <string name="save_deck_action">Save deck</string>
+    <string name="save_deck_error">Could not save the deck</string>
     <string name="welcome_user">Welcome, %1$s</string>
     <string name="email_identity">Email: %1$s</string>
     <string name="save_display_name_action">Save display name</string>

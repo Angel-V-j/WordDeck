@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.worddeck.common.AppError
 import com.worddeck.common.AppResult
+import com.worddeck.common.OperationStatus
 import com.worddeck.domain.model.DisplayName
 import com.worddeck.domain.model.EmailAddress
 import com.worddeck.domain.model.User
@@ -22,8 +23,8 @@ data class AuthFormErrors(
 
 data class AuthUiState(
     val currentUser: User? = null,
-    val isSessionLoading: Boolean = true,
-    val isSubmitting: Boolean = false,
+    val sessionStatus: OperationStatus = OperationStatus.LOADING,
+    val submitStatus: OperationStatus = OperationStatus.IDLE,
     val formErrors: AuthFormErrors = AuthFormErrors(),
     val error: AppError? = null,
 )
@@ -41,12 +42,12 @@ class AuthViewModel(
                     when (result) {
                         is AppResult.Success -> current.copy(
                             currentUser = result.value,
-                            isSessionLoading = false,
+                            sessionStatus = OperationStatus.SUCCESS,
                             error = null,
                         )
                         is AppResult.Failure -> current.copy(
                             currentUser = null,
-                            isSessionLoading = false,
+                            sessionStatus = OperationStatus.ERROR,
                             error = result.error,
                         )
                     }
@@ -56,7 +57,7 @@ class AuthViewModel(
     }
 
     fun login(email: String, password: String) {
-        if (_uiState.value.isSubmitting) return
+        if (_uiState.value.submitStatus == OperationStatus.LOADING) return
 
         submit(
             formErrors = validateLogin(email, password),
@@ -70,7 +71,7 @@ class AuthViewModel(
     }
 
     fun register(displayName: String, email: String, password: String) {
-        if (_uiState.value.isSubmitting) return
+        if (_uiState.value.submitStatus == OperationStatus.LOADING) return
 
         submit(
             formErrors = validateRegistration(displayName, email, password),
@@ -85,23 +86,24 @@ class AuthViewModel(
     }
 
     fun logout() {
-        if (_uiState.value.isSubmitting) return
+        if (_uiState.value.submitStatus == OperationStatus.LOADING) return
 
-        _uiState.update { it.copy(isSubmitting = true, error = null) }
+        _uiState.update { it.copy(submitStatus = OperationStatus.LOADING, error = null) }
         viewModelScope.launch {
             when (val result = authenticationRepository.logout()) {
                 is AppResult.Success -> _uiState.value = AuthUiState(
-                    isSessionLoading = false,
+                    sessionStatus = OperationStatus.SUCCESS,
+                    submitStatus = OperationStatus.SUCCESS,
                 )
                 is AppResult.Failure -> _uiState.update {
-                    it.copy(isSubmitting = false, error = result.error)
+                    it.copy(submitStatus = OperationStatus.ERROR, error = result.error)
                 }
             }
         }
     }
 
     fun updateDisplayName(displayName: String) {
-        if (_uiState.value.isSubmitting) return
+        if (_uiState.value.submitStatus == OperationStatus.LOADING) return
 
         val displayNameResult = DisplayName.from(displayName)
         submit(
@@ -117,7 +119,13 @@ class AuthViewModel(
     }
 
     fun clearErrors() {
-        _uiState.update { it.copy(formErrors = AuthFormErrors(), error = null) }
+        _uiState.update {
+            it.copy(
+                submitStatus = OperationStatus.IDLE,
+                formErrors = AuthFormErrors(),
+                error = null,
+            )
+        }
     }
 
     private fun submit(
@@ -125,13 +133,19 @@ class AuthViewModel(
         operation: suspend () -> AppResult<User>,
     ) {
         if (formErrors.hasErrors()) {
-            _uiState.update { it.copy(formErrors = formErrors, error = null) }
+            _uiState.update {
+                it.copy(
+                    submitStatus = OperationStatus.ERROR,
+                    formErrors = formErrors,
+                    error = null,
+                )
+            }
             return
         }
 
         _uiState.update {
             it.copy(
-                isSubmitting = true,
+                submitStatus = OperationStatus.LOADING,
                 formErrors = AuthFormErrors(),
                 error = null,
             )
@@ -140,7 +154,8 @@ class AuthViewModel(
             when (val result = operation()) {
                 is AppResult.Success -> _uiState.value = AuthUiState(
                     currentUser = result.value,
-                    isSessionLoading = false,
+                    sessionStatus = OperationStatus.SUCCESS,
+                    submitStatus = OperationStatus.SUCCESS,
                 )
                 is AppResult.Failure -> showFailure(result.error)
             }
@@ -150,7 +165,8 @@ class AuthViewModel(
     private fun showFailure(error: AppError) {
         if (error == AppError.Authentication.Unauthenticated) {
             _uiState.value = AuthUiState(
-                isSessionLoading = false,
+                sessionStatus = OperationStatus.SUCCESS,
+                submitStatus = OperationStatus.ERROR,
                 error = error,
             )
             return
@@ -159,11 +175,11 @@ class AuthViewModel(
         _uiState.update {
             if (error is AppError.Validation) {
                 it.copy(
-                    isSubmitting = false,
+                    submitStatus = OperationStatus.ERROR,
                     formErrors = error.toFormErrors(),
                 )
             } else {
-                it.copy(isSubmitting = false, error = error)
+                it.copy(submitStatus = OperationStatus.ERROR, error = error)
             }
         }
     }
