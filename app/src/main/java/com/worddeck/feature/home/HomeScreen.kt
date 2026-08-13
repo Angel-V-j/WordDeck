@@ -1,110 +1,150 @@
 package com.worddeck.feature.home
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.worddeck.R
-import com.worddeck.common.AppError
-import com.worddeck.domain.model.User
+import com.worddeck.domain.model.Deck
+import com.worddeck.domain.model.DeckId
 
 @Composable
 fun HomeScreen(
-    user: User,
-    isSubmitting: Boolean,
-    displayNameError: String?,
-    error: AppError?,
-    onUpdateDisplayName: (String) -> Unit,
-    onLogout: () -> Unit,
+    uiState: HomeUiState,
+    onDeckClick: (DeckId) -> Unit,
+    onOpenProfile: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var displayName by rememberSaveable(user.displayName.value) {
-        mutableStateOf(user.displayName.value)
-    }
-
     Column(
         modifier = modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .imePadding()
+            .statusBarsPadding()
             .navigationBarsPadding()
             .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .widthIn(max = 480.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = stringResource(R.string.profile_title),
+                text = stringResource(R.string.your_decks_title),
                 style = MaterialTheme.typography.headlineMedium,
             )
-            Text(
-                text = stringResource(R.string.welcome_user, user.displayName.value),
-                style = MaterialTheme.typography.titleLarge,
-            )
-            Text(
-                text = stringResource(R.string.email_identity, user.email.value),
-                style = MaterialTheme.typography.bodyLarge,
-            )
-            OutlinedTextField(
-                value = displayName,
-                onValueChange = { displayName = it },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !isSubmitting,
-                singleLine = true,
-                label = { Text(stringResource(R.string.display_name_label)) },
-                isError = displayNameError != null,
-                supportingText = displayNameError?.let { reason ->
-                    { Text(stringResource(R.string.display_name_error, reason)) }
-                },
-            )
-            OutlinedButton(
-                onClick = { onUpdateDisplayName(displayName) },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !isSubmitting,
-            ) {
-                Text(stringResource(R.string.save_display_name_action))
+            TextButton(onClick = onOpenProfile) {
+                Text(stringResource(R.string.profile_title))
             }
-            if (error != null) {
+        }
+
+        when (uiState) {
+            HomeUiState.Loading -> CenteredContent {
+                CircularProgressIndicator()
+                Text(stringResource(R.string.loading_decks))
+            }
+            HomeUiState.Empty -> CenteredContent {
+                Text(stringResource(R.string.empty_decks))
+            }
+            is HomeUiState.Error -> CenteredContent {
                 Text(
-                    text = stringResource(R.string.account_action_error),
+                    text = stringResource(R.string.deck_list_error),
                     color = MaterialTheme.colorScheme.error,
                 )
             }
-            if (isSubmitting) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-            }
-            OutlinedButton(
-                onClick = onLogout,
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !isSubmitting,
+            is HomeUiState.Content -> LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Text(stringResource(R.string.logout_action))
+                items(uiState.decks, key = { it.id.value }) { deck ->
+                    DeckItem(deck = deck, onClick = { onDeckClick(deck.id) })
+                }
             }
         }
+    }
+}
+
+@Composable
+fun DeckDetailsScreen(
+    deck: Deck?,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        TextButton(onClick = onBack) {
+            Text(stringResource(R.string.back_action))
+        }
+        Text(
+            text = stringResource(R.string.deck_details_title),
+            style = MaterialTheme.typography.headlineMedium,
+        )
+        if (deck == null) {
+            Text(stringResource(R.string.deck_not_found))
+        } else {
+            Text(deck.title.value, style = MaterialTheme.typography.titleLarge)
+            DeckMetadata(deck)
+        }
+    }
+}
+
+@Composable
+private fun DeckItem(deck: Deck, onClick: () -> Unit) {
+    Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(deck.title.value, style = MaterialTheme.typography.titleMedium)
+            DeckMetadata(deck)
+        }
+    }
+}
+
+@Composable
+private fun DeckMetadata(deck: Deck) {
+    val languages = listOfNotNull(
+        deck.sourceLanguage?.value,
+        deck.targetLanguage?.value,
+    ).joinToString(" → ")
+
+    if (languages.isNotEmpty()) {
+        Text(languages, style = MaterialTheme.typography.bodyMedium)
+    }
+    deck.category?.let {
+        Text(it.value, style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+@Composable
+private fun CenteredContent(content: @Composable ColumnScope.() -> Unit) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            content = content,
+        )
     }
 }

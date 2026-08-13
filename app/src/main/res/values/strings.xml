@@ -11,6 +11,13 @@
     <string name="open_login_action">Already have an account? Log in</string>
     <string name="logout_action">Log out</string>
     <string name="profile_title">Profile</string>
+    <string name="your_decks_title">Your decks</string>
+    <string name="loading_decks">Loading decks</string>
+    <string name="empty_decks">No decks yet</string>
+    <string name="deck_list_error">Could not load your decks</string>
+    <string name="deck_details_title">Deck details</string>
+    <string name="deck_not_found">Deck not found</string>
+    <string name="back_action">Back</string>
     <string name="welcome_user">Welcome, %1$s</string>
     <string name="email_identity">Email: %1$s</string>
     <string name="save_display_name_action">Save display name</string>
