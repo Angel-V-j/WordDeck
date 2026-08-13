@@ -15,6 +15,10 @@
     <string name="loading_decks">Loading decks</string>
     <string name="empty_decks">No decks yet</string>
     <string name="deck_list_error">Could not load your decks</string>
+    <string name="search_decks_label">Search decks</string>
+    <string name="category_filter_label">Category filter</string>
+    <string name="language_filter_label">Language filter</string>
+    <string name="no_matching_decks">No decks match the current search and filters</string>
     <string name="deck_details_title">Deck details</string>
     <string name="deck_not_found">Deck not found</string>
     <string name="back_action">Back</string>
@@ -39,6 +43,8 @@
     <string name="add_card_action">Add card</string>
     <string name="empty_cards">No cards yet</string>
     <string name="card_list_error">Could not load cards</string>
+    <string name="search_cards_label">Search cards</string>
+    <string name="no_matching_cards">No cards match the current search</string>
     <string name="card_operation_error">Could not save or delete the card</string>
     <string name="create_card_title">Create card</string>
     <string name="edit_card_title">Edit card</string>

@@ -13,8 +13,6 @@ import com.worddeck.common.IdGenerator
 import com.worddeck.domain.repository.DeckRepository
 import com.worddeck.domain.repository.FlashcardRepository
 import com.worddeck.feature.auth.AuthViewModel
-import com.worddeck.feature.home.HomeUiState
-import com.worddeck.feature.home.HomeViewModel
 import com.worddeck.navigation.AppNavigation
 import com.worddeck.ui.theme.WordDeckTheme
 
@@ -41,26 +39,11 @@ fun WordDeckContent(
     clock: Clock,
 ) {
     val uiState by authViewModel.uiState.collectAsStateWithLifecycle()
-    val currentUser = uiState.currentUser
-    val homeUiState = if (currentUser == null) {
-        HomeUiState()
-    } else {
-        // A new user must not reuse the previous user's deck-list ViewModel.
-        val homeViewModel = viewModel<HomeViewModel>(key = "home-${currentUser.id.value}") {
-            HomeViewModel(
-                deckRepository = deckRepository,
-                ownerId = currentUser.id,
-            )
-        }
-        val state by homeViewModel.uiState.collectAsStateWithLifecycle()
-        state
-    }
 
     WordDeckTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
             AppNavigation(
                 uiState = uiState,
-                homeUiState = homeUiState,
                 deckRepository = deckRepository,
                 flashcardRepository = flashcardRepository,
                 idGenerator = idGenerator,

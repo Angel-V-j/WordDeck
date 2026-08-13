@@ -34,7 +34,7 @@ import com.worddeck.feature.decks.FlashcardUiState
 import com.worddeck.feature.decks.FlashcardViewModel
 import com.worddeck.feature.home.DeckDetailsScreen
 import com.worddeck.feature.home.HomeScreen
-import com.worddeck.feature.home.HomeUiState
+import com.worddeck.feature.home.HomeViewModel
 
 object AppDestination {
     private const val DECK_ID = "deckId"
@@ -55,7 +55,6 @@ object AppDestination {
 @Composable
 fun AppNavigation(
     uiState: AuthUiState,
-    homeUiState: HomeUiState,
     deckRepository: DeckRepository,
     flashcardRepository: FlashcardRepository,
     idGenerator: IdGenerator,
@@ -79,7 +78,6 @@ fun AppNavigation(
         )
         else -> MainNavigation(
             uiState = uiState,
-            homeUiState = homeUiState,
             deckRepository = deckRepository,
             flashcardRepository = flashcardRepository,
             idGenerator = idGenerator,
@@ -132,7 +130,6 @@ private fun AuthNavigation(
 @Composable
 private fun MainNavigation(
     uiState: AuthUiState,
-    homeUiState: HomeUiState,
     deckRepository: DeckRepository,
     flashcardRepository: FlashcardRepository,
     idGenerator: IdGenerator,
@@ -143,6 +140,14 @@ private fun MainNavigation(
     modifier: Modifier,
 ) {
     val navController = rememberNavController()
+    // The user ID in the key keeps one user's deck list separate from another user's session.
+    val homeViewModel = viewModel<HomeViewModel>(key = "home-${user.id.value}") {
+        HomeViewModel(
+            deckRepository = deckRepository,
+            ownerId = user.id,
+        )
+    }
+    val homeUiState by homeViewModel.uiState.collectAsStateWithLifecycle()
     NavHost(
         navController = navController,
         startDestination = AppDestination.HOME,
@@ -156,6 +161,9 @@ private fun MainNavigation(
                 },
                 onCreateDeck = { navController.navigate(AppDestination.CREATE_DECK) },
                 onOpenProfile = { navController.navigate(AppDestination.PROFILE) },
+                onSearchQueryChange = homeViewModel::updateSearchQuery,
+                onCategoryFilterChange = homeViewModel::updateCategoryFilter,
+                onLanguageFilterChange = homeViewModel::updateLanguageFilter,
             )
         }
         composable(AppDestination.PROFILE) {
@@ -185,6 +193,7 @@ private fun MainNavigation(
                     onSaveFlashcard = { _, _, _, _, _ -> },
                     onDeleteFlashcard = {},
                     onClearFlashcardOperation = {},
+                    onFlashcardSearchQueryChange = {},
                     onBack = { navController.popBackStack() },
                 )
             } else {
@@ -227,6 +236,7 @@ private fun MainNavigation(
                     onSaveFlashcard = flashcardViewModel::save,
                     onDeleteFlashcard = flashcardViewModel::delete,
                     onClearFlashcardOperation = flashcardViewModel::clearOperation,
+                    onFlashcardSearchQueryChange = flashcardViewModel::updateSearchQuery,
                     onBack = { navController.popBackStack() },
                 )
             }
@@ -258,6 +268,7 @@ private fun MainNavigation(
                     onSaveFlashcard = { _, _, _, _, _ -> },
                     onDeleteFlashcard = {},
                     onClearFlashcardOperation = {},
+                    onFlashcardSearchQueryChange = {},
                     onBack = { navController.popBackStack() },
                 )
             } else {

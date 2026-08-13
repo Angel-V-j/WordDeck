@@ -41,6 +41,7 @@ fun FlashcardSection(
     onSave: (Flashcard?, String, String, String, String) -> Unit,
     onDelete: (CardId) -> Unit,
     onClearOperation: () -> Unit,
+    onSearchQueryChange: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var showEditor by rememberSaveable { mutableStateOf(false) }
@@ -122,6 +123,14 @@ fun FlashcardSection(
             }
         }
 
+        OutlinedTextField(
+            value = uiState.searchQuery,
+            onValueChange = onSearchQueryChange,
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text(stringResource(R.string.search_cards_label)) },
+            singleLine = true,
+        )
+
         if (isWorking) {
             LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
         }
@@ -146,7 +155,15 @@ fun FlashcardSection(
                 color = MaterialTheme.colorScheme.error,
             )
             OperationStatus.SUCCESS -> if (uiState.cards.isEmpty()) {
-                Text(stringResource(R.string.empty_cards))
+                Text(
+                    stringResource(
+                        if (uiState.searchQuery.isBlank()) {
+                            R.string.empty_cards
+                        } else {
+                            R.string.no_matching_cards
+                        },
+                    ),
+                )
             } else {
                 LazyColumn(
                     modifier = Modifier

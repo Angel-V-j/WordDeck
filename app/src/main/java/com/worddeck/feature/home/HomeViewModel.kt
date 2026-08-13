@@ -15,7 +15,12 @@ import kotlinx.coroutines.launch
 
 data class HomeUiState(
     val status: OperationStatus = OperationStatus.LOADING,
+    // Navigation needs the complete owner-scoped list even when the screen is filtered.
     val decks: List<Deck> = emptyList(),
+    val visibleDecks: List<Deck> = decks,
+    val searchQuery: String = "",
+    val categoryFilter: String = "",
+    val languageFilter: String = "",
     val error: AppError? = null,
 )
 
@@ -29,17 +34,75 @@ class HomeViewModel(
     init {
         viewModelScope.launch {
             deckRepository.observeByOwner(ownerId).collect { result ->
-                _uiState.value = when (result) {
-                    is AppResult.Success -> HomeUiState(
-                        status = OperationStatus.SUCCESS,
-                        decks = result.value,
-                    )
-                    is AppResult.Failure -> HomeUiState(
-                        status = OperationStatus.ERROR,
-                        error = result.error,
-                    )
+                when (result) {
+                    is AppResult.Success -> {
+                        _uiState.value = _uiState.value.copy(
+                            status = OperationStatus.SUCCESS,
+                            decks = result.value,
+                            error = null,
+                        )
+                        updateVisibleDecks()
+                    }
+                    is AppResult.Failure -> {
+                        _uiState.value = _uiState.value.copy(
+                            status = OperationStatus.ERROR,
+                            decks = emptyList(),
+                            visibleDecks = emptyList(),
+                            error = result.error,
+                        )
+                    }
                 }
             }
         }
     }
+
+    fun updateSearchQuery(query: String) {
+        _uiState.value = _uiState.value.copy(searchQuery = query)
+        updateVisibleDecks()
+    }
+
+    fun updateCategoryFilter(category: String) {
+        _uiState.value = _uiState.value.copy(categoryFilter = category)
+        updateVisibleDecks()
+    }
+
+    fun updateLanguageFilter(language: String) {
+        _uiState.value = _uiState.value.copy(languageFilter = language)
+        updateVisibleDecks()
+    }
+
+    private fun updateVisibleDecks() {
+        val state = _uiState.value
+        val query = state.searchQuery.trim()
+        val category = state.categoryFilter.trim()
+        val language = state.languageFilter.trim()
+
+        val visibleDecks = state.decks.filter { deck ->
+            deck.matchesSearch(query) &&
+                deck.matchesCategory(category) &&
+                deck.matchesLanguage(language)
+        }
+        _uiState.value = state.copy(visibleDecks = visibleDecks)
+    }
+}
+
+private fun Deck.matchesSearch(query: String): Boolean {
+    if (query.isEmpty()) return true
+
+    return title.value.contains(query, ignoreCase = true) ||
+        sourceLanguage?.value?.contains(query, ignoreCase = true) == true ||
+        targetLanguage?.value?.contains(query, ignoreCase = true) == true ||
+        category?.value?.contains(query, ignoreCase = true) == true
+}
+
+private fun Deck.matchesCategory(filter: String): Boolean {
+    if (filter.isEmpty()) return true
+    return category?.value?.contains(filter, ignoreCase = true) == true
+}
+
+private fun Deck.matchesLanguage(filter: String): Boolean {
+    if (filter.isEmpty()) return true
+
+    return sourceLanguage?.value?.contains(filter, ignoreCase = true) == true ||
+        targetLanguage?.value?.contains(filter, ignoreCase = true) == true
 }

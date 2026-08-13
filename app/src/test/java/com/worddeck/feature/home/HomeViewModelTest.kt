@@ -45,7 +45,7 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `uses fake repository from app container and exposes content`() = runTest {
+    fun `requests the owner scoped flow and exposes its content`() = runTest {
         val decks = listOf(createDeck())
         val repository = FakeDeckRepository(AppResult.Success(decks))
         val appContainer = AppContainer(
@@ -91,15 +91,120 @@ class HomeViewModelTest {
         assertEquals(OperationStatus.ERROR, viewModel.uiState.value.status)
         assertEquals(error, viewModel.uiState.value.error)
     }
+
+    @Test
+    fun `search ignores case and surrounding whitespace for every deck field`() = runTest {
+        val firstDeck = createDeck(
+            id = "deck-1",
+            title = "Everyday verbs",
+            sourceLanguage = "English",
+            targetLanguage = "Spanish",
+            category = "Basics",
+        )
+        val secondDeck = createDeck(
+            id = "deck-2",
+            title = "Travel phrases",
+            sourceLanguage = "Bulgarian",
+            targetLanguage = "French",
+            category = "Tourism",
+        )
+        val viewModel = HomeViewModel(
+            deckRepository = FakeDeckRepository(AppResult.Success(listOf(firstDeck, secondDeck))),
+            ownerId = userId(),
+        )
+        advanceUntilIdle()
+
+        viewModel.updateSearchQuery("  VERBS  ")
+        assertEquals(listOf(firstDeck), viewModel.uiState.value.visibleDecks)
+
+        viewModel.updateSearchQuery(" english ")
+        assertEquals(listOf(firstDeck), viewModel.uiState.value.visibleDecks)
+
+        viewModel.updateSearchQuery("SPANISH")
+        assertEquals(listOf(firstDeck), viewModel.uiState.value.visibleDecks)
+
+        viewModel.updateSearchQuery(" basics ")
+        assertEquals(listOf(firstDeck), viewModel.uiState.value.visibleDecks)
+
+        viewModel.updateSearchQuery("french")
+        assertEquals(listOf(secondDeck), viewModel.uiState.value.visibleDecks)
+    }
+
+    @Test
+    fun `category and language filters work separately and together`() = runTest {
+        val spanishBasics = createDeck(
+            id = "deck-1",
+            title = "Basic words",
+            sourceLanguage = "English",
+            targetLanguage = "Spanish",
+            category = "Vocabulary",
+        )
+        val frenchTravel = createDeck(
+            id = "deck-2",
+            title = "Travel phrases",
+            sourceLanguage = "English",
+            targetLanguage = "French",
+            category = "Travel",
+        )
+        val viewModel = HomeViewModel(
+            deckRepository = FakeDeckRepository(AppResult.Success(listOf(spanishBasics, frenchTravel))),
+            ownerId = userId(),
+        )
+        advanceUntilIdle()
+
+        viewModel.updateCategoryFilter("  TRAVEL ")
+        assertEquals(listOf(frenchTravel), viewModel.uiState.value.visibleDecks)
+
+        viewModel.updateCategoryFilter("")
+        viewModel.updateLanguageFilter(" spanish ")
+        assertEquals(listOf(spanishBasics), viewModel.uiState.value.visibleDecks)
+
+        viewModel.updateSearchQuery("phrases")
+        viewModel.updateCategoryFilter("travel")
+        viewModel.updateLanguageFilter("french")
+        assertEquals(listOf(frenchTravel), viewModel.uiState.value.visibleDecks)
+
+        viewModel.updateLanguageFilter("Spanish")
+        assertEquals(emptyList<Deck>(), viewModel.uiState.value.visibleDecks)
+    }
+
+    @Test
+    fun `blank search query returns the complete current deck list`() = runTest {
+        val decks = listOf(
+            createDeck(id = "deck-1", title = "Spanish basics"),
+            createDeck(
+                id = "deck-2",
+                title = "French basics",
+                targetLanguage = "French",
+            ),
+        )
+        val viewModel = HomeViewModel(
+            deckRepository = FakeDeckRepository(AppResult.Success(decks)),
+            ownerId = userId(),
+        )
+        advanceUntilIdle()
+
+        viewModel.updateSearchQuery("Spanish")
+        assertEquals(1, viewModel.uiState.value.visibleDecks.size)
+
+        viewModel.updateSearchQuery("   ")
+        assertEquals(decks, viewModel.uiState.value.visibleDecks)
+    }
 }
 
-private fun createDeck(): Deck = Deck(
-    id = DeckId.from("deck-1").successValue(),
+private fun createDeck(
+    id: String = "deck-1",
+    title: String = "Spanish basics",
+    sourceLanguage: String = "English",
+    targetLanguage: String = "Spanish",
+    category: String = "Vocabulary",
+): Deck = Deck(
+    id = DeckId.from(id).successValue(),
     ownerId = userId(),
-    title = DeckTitle.from("Spanish basics").successValue(),
-    sourceLanguage = DeckLanguage.from("English").successValue(),
-    targetLanguage = DeckLanguage.from("Spanish").successValue(),
-    category = DeckCategory.from("Vocabulary").successValue(),
+    title = DeckTitle.from(title).successValue(),
+    sourceLanguage = DeckLanguage.from(sourceLanguage).successValue(),
+    targetLanguage = DeckLanguage.from(targetLanguage).successValue(),
+    category = DeckCategory.from(category).successValue(),
     visibility = DeckVisibility.PRIVATE,
     createdAt = Timestamp(1_000),
     updatedAt = Timestamp(1_000),

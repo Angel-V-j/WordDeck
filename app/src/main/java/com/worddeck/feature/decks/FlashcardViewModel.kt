@@ -20,6 +20,7 @@ import kotlinx.coroutines.launch
 data class FlashcardUiState(
     val listStatus: OperationStatus = OperationStatus.LOADING,
     val cards: List<Flashcard> = emptyList(),
+    val searchQuery: String = "",
     val operationStatus: OperationStatus = OperationStatus.IDLE,
     val frontError: String? = null,
     val backError: String? = null,
@@ -34,23 +35,36 @@ class FlashcardViewModel(
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(FlashcardUiState())
     val uiState: StateFlow<FlashcardUiState> = _uiState.asStateFlow()
+    private var allCards: List<Flashcard> = emptyList()
 
     init {
         viewModelScope.launch {
             flashcardRepository.observeByDeck(deckId).collect { result ->
-                _uiState.value = when (result) {
-                    is AppResult.Success -> _uiState.value.copy(
-                        listStatus = OperationStatus.SUCCESS,
-                        cards = result.value,
-                        error = null,
-                    )
-                    is AppResult.Failure -> _uiState.value.copy(
-                        listStatus = OperationStatus.ERROR,
-                        error = result.error,
-                    )
+                when (result) {
+                    is AppResult.Success -> {
+                        allCards = result.value
+                        _uiState.value = _uiState.value.copy(
+                            listStatus = OperationStatus.SUCCESS,
+                            error = null,
+                        )
+                        updateVisibleCards()
+                    }
+                    is AppResult.Failure -> {
+                        allCards = emptyList()
+                        _uiState.value = _uiState.value.copy(
+                            listStatus = OperationStatus.ERROR,
+                            cards = emptyList(),
+                            error = result.error,
+                        )
+                    }
                 }
             }
         }
+    }
+
+    fun updateSearchQuery(query: String) {
+        _uiState.value = _uiState.value.copy(searchQuery = query)
+        updateVisibleCards()
     }
 
     fun save(
@@ -178,6 +192,22 @@ class FlashcardViewModel(
             error = error,
         )
     }
+
+    private fun updateVisibleCards() {
+        val state = _uiState.value
+        val query = state.searchQuery.trim()
+        val visibleCards = allCards.filter { it.matchesSearch(query) }
+        _uiState.value = state.copy(cards = visibleCards)
+    }
 }
 
 private fun String.normalizedOptional(): String? = trim().ifEmpty { null }
+
+private fun Flashcard.matchesSearch(query: String): Boolean {
+    if (query.isEmpty()) return true
+
+    return front.value.contains(query, ignoreCase = true) ||
+        back.value.contains(query, ignoreCase = true) ||
+        exampleSentence?.contains(query, ignoreCase = true) == true ||
+        additionalInformation?.contains(query, ignoreCase = true) == true
+}

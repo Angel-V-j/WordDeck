@@ -149,6 +149,64 @@ class FlashcardViewModelTest {
         assertEquals(OperationStatus.SUCCESS, viewModel.uiState.value.operationStatus)
     }
 
+    @Test
+    fun `search ignores case and whitespace and checks every card text field`() = runTest {
+        val greeting = flashcard(
+            id = "card-1",
+            front = "hello",
+            back = "hola",
+            exampleSentence = "Friendly greeting",
+            additionalInformation = "Common phrase",
+        )
+        val animal = flashcard(
+            id = "card-2",
+            front = "cat",
+            back = "gato",
+            exampleSentence = "The animal sleeps",
+            additionalInformation = "Noun",
+        )
+        val viewModel = createViewModel(
+            FakeFlashcardRepository(AppResult.Success(listOf(greeting, animal))),
+        )
+        advanceUntilIdle()
+
+        viewModel.updateSearchQuery("  HELLO  ")
+        assertEquals(listOf(greeting), viewModel.uiState.value.cards)
+
+        viewModel.updateSearchQuery(" gato ")
+        assertEquals(listOf(animal), viewModel.uiState.value.cards)
+
+        viewModel.updateSearchQuery("ANIMAL")
+        assertEquals(listOf(animal), viewModel.uiState.value.cards)
+
+        viewModel.updateSearchQuery(" common ")
+        assertEquals(listOf(greeting), viewModel.uiState.value.cards)
+    }
+
+    @Test
+    fun `blank search query returns every card from the selected deck`() = runTest {
+        val cards = listOf(
+            flashcard(id = "card-1", front = "hello"),
+            flashcard(
+                id = "card-2",
+                front = "cat",
+                back = "gato",
+                exampleSentence = "The cat sleeps",
+                additionalInformation = "Animal noun",
+            ),
+        )
+        val viewModel = createViewModel(
+            FakeFlashcardRepository(AppResult.Success(cards)),
+        )
+        advanceUntilIdle()
+
+        viewModel.updateSearchQuery("hello")
+        assertEquals(1, viewModel.uiState.value.cards.size)
+
+        viewModel.updateSearchQuery("   ")
+        assertEquals(cards, viewModel.uiState.value.cards)
+    }
+
     private fun createViewModel(
         repository: FakeFlashcardRepository,
         idGenerator: IdGenerator = IdGenerator { "card-1" },

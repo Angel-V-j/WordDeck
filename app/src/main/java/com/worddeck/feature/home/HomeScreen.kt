@@ -17,6 +17,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -44,6 +45,9 @@ fun HomeScreen(
     onDeckClick: (DeckId) -> Unit,
     onCreateDeck: () -> Unit,
     onOpenProfile: () -> Unit,
+    onSearchQueryChange: (String) -> Unit,
+    onCategoryFilterChange: (String) -> Unit,
+    onLanguageFilterChange: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -72,6 +76,28 @@ fun HomeScreen(
             }
         }
 
+        OutlinedTextField(
+            value = uiState.searchQuery,
+            onValueChange = onSearchQueryChange,
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text(stringResource(R.string.search_decks_label)) },
+            singleLine = true,
+        )
+        OutlinedTextField(
+            value = uiState.categoryFilter,
+            onValueChange = onCategoryFilterChange,
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text(stringResource(R.string.category_filter_label)) },
+            singleLine = true,
+        )
+        OutlinedTextField(
+            value = uiState.languageFilter,
+            onValueChange = onLanguageFilterChange,
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text(stringResource(R.string.language_filter_label)) },
+            singleLine = true,
+        )
+
         when (uiState.status) {
             OperationStatus.IDLE,
             OperationStatus.LOADING,
@@ -85,16 +111,21 @@ fun HomeScreen(
                     color = MaterialTheme.colorScheme.error,
                 )
             }
-            OperationStatus.SUCCESS -> if (uiState.decks.isEmpty()) {
+            OperationStatus.SUCCESS -> if (uiState.visibleDecks.isEmpty()) {
                 CenteredContent {
-                    Text(stringResource(R.string.empty_decks))
+                    val message = if (uiState.decks.isEmpty()) {
+                        R.string.empty_decks
+                    } else {
+                        R.string.no_matching_decks
+                    }
+                    Text(stringResource(message))
                 }
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    items(uiState.decks, key = { it.id.value }) { deck ->
+                    items(uiState.visibleDecks, key = { it.id.value }) { deck ->
                         DeckItem(deck = deck, onClick = { onDeckClick(deck.id) })
                     }
                 }
@@ -113,6 +144,7 @@ fun DeckDetailsScreen(
     onSaveFlashcard: (Flashcard?, String, String, String, String) -> Unit,
     onDeleteFlashcard: (CardId) -> Unit,
     onClearFlashcardOperation: () -> Unit,
+    onFlashcardSearchQueryChange: (String) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -188,6 +220,7 @@ fun DeckDetailsScreen(
                 onSave = onSaveFlashcard,
                 onDelete = onDeleteFlashcard,
                 onClearOperation = onClearFlashcardOperation,
+                onSearchQueryChange = onFlashcardSearchQueryChange,
                 modifier = Modifier.weight(1f),
             )
         }
