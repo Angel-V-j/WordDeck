@@ -55,7 +55,18 @@ class Sm2Test {
         assertEquals(0, input.repetition)
         assertEquals(2.5, input.easeFactor, 0.0)
         assertEquals(0, input.intervalDays)
+        assertEquals(0, input.successfulReviewCount)
+        assertEquals(0, input.failedReviewCount)
         assertEquals(Sm2Quality.FOUR, input.quality)
+        assertEquals(
+            MasteryLevel.NEW,
+            Sm2Rules.classifyMastery(
+                repetition = input.repetition,
+                successfulReviewCount = input.successfulReviewCount,
+                failedReviewCount = input.failedReviewCount,
+                lastQuality = null,
+            ),
+        )
         assertEquals(1.3, Sm2Rules.MINIMUM_EASE_FACTOR, 0.0)
         assertEquals(1, Sm2Rules.FIRST_SUCCESS_INTERVAL_DAYS)
         assertEquals(6, Sm2Rules.SECOND_SUCCESS_INTERVAL_DAYS)
@@ -106,6 +117,8 @@ class Sm2Test {
                 repetition = first.repetition,
                 easeFactor = first.easeFactor,
                 intervalDays = first.intervalDays,
+                successfulReviewCount = first.successfulReviewCount,
+                failedReviewCount = first.failedReviewCount,
                 quality = Sm2Quality.FOUR,
             ),
             reviewedAt = REVIEWED_AT,
@@ -115,6 +128,8 @@ class Sm2Test {
                 repetition = second.repetition,
                 easeFactor = second.easeFactor,
                 intervalDays = second.intervalDays,
+                successfulReviewCount = second.successfulReviewCount,
+                failedReviewCount = second.failedReviewCount,
                 quality = Sm2Quality.FIVE,
             ),
             reviewedAt = REVIEWED_AT,
@@ -136,6 +151,8 @@ class Sm2Test {
                 repetition = 5,
                 easeFactor = 2.5,
                 intervalDays = 30,
+                successfulReviewCount = 5,
+                failedReviewCount = 0,
                 quality = Sm2Quality.TWO,
             ),
             reviewedAt = REVIEWED_AT,
@@ -153,6 +170,8 @@ class Sm2Test {
                 repetition = 3,
                 easeFactor = Sm2Rules.MINIMUM_EASE_FACTOR,
                 intervalDays = 10,
+                successfulReviewCount = 3,
+                failedReviewCount = 2,
                 quality = Sm2Quality.ZERO,
             ),
             reviewedAt = REVIEWED_AT,
@@ -168,6 +187,8 @@ class Sm2Test {
                 repetition = 2,
                 easeFactor = 2.3,
                 intervalDays = 6,
+                successfulReviewCount = 2,
+                failedReviewCount = 0,
                 quality = Sm2Quality.FOUR,
             ),
             reviewedAt = REVIEWED_AT,
@@ -189,6 +210,75 @@ class Sm2Test {
             Instant.parse("2026-08-15T09:30:00Z").toEpochMilli(),
             result.nextReviewAt.epochMilliseconds,
         )
+    }
+
+    @Test
+    fun `successful review increments only the success counter`() {
+        val result = Sm2Scheduler.review(
+            input = Sm2Input.initial(Sm2Quality.FOUR),
+            reviewedAt = REVIEWED_AT,
+        )
+
+        assertEquals(1, result.successfulReviewCount)
+        assertEquals(0, result.failedReviewCount)
+        assertEquals(MasteryLevel.LEARNING, result.masteryLevel)
+    }
+
+    @Test
+    fun `third recorded failure makes the latest failed review problematic`() {
+        val result = Sm2Scheduler.review(
+            input = Sm2Input(
+                repetition = 2,
+                easeFactor = 2.3,
+                intervalDays = 6,
+                successfulReviewCount = 2,
+                failedReviewCount = 2,
+                quality = Sm2Quality.TWO,
+            ),
+            reviewedAt = REVIEWED_AT,
+        )
+
+        assertEquals(2, result.successfulReviewCount)
+        assertEquals(3, result.failedReviewCount)
+        assertEquals(MasteryLevel.PROBLEMATIC, result.masteryLevel)
+    }
+
+    @Test
+    fun `success after a problematic review returns the card to learning`() {
+        val result = Sm2Scheduler.review(
+            input = Sm2Input(
+                repetition = 0,
+                easeFactor = 2.0,
+                intervalDays = 1,
+                successfulReviewCount = 2,
+                failedReviewCount = 3,
+                quality = Sm2Quality.FOUR,
+            ),
+            reviewedAt = REVIEWED_AT,
+        )
+
+        assertEquals(3, result.successfulReviewCount)
+        assertEquals(3, result.failedReviewCount)
+        assertEquals(MasteryLevel.LEARNING, result.masteryLevel)
+    }
+
+    @Test
+    fun `fourth consecutive successful review makes the card mastered`() {
+        val result = Sm2Scheduler.review(
+            input = Sm2Input(
+                repetition = 3,
+                easeFactor = 2.5,
+                intervalDays = 15,
+                successfulReviewCount = 3,
+                failedReviewCount = 0,
+                quality = Sm2Quality.FOUR,
+            ),
+            reviewedAt = REVIEWED_AT,
+        )
+
+        assertEquals(4, result.successfulReviewCount)
+        assertEquals(0, result.failedReviewCount)
+        assertEquals(MasteryLevel.MASTERED, result.masteryLevel)
     }
 }
 

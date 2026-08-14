@@ -5,7 +5,7 @@ import com.worddeck.common.Timestamp
 /**
  * Persisted learning classification for a flashcard.
  *
- * The exact transition thresholds belong to the spaced-repetition business rules:
+ * The transition thresholds are implemented by [Sm2Rules.classifyMastery]:
  * - [NEW] has no completed reviews;
  * - [LEARNING] has review history but is not classified as mastered or problematic;
  * - [MASTERED] has reached the documented mastery threshold;

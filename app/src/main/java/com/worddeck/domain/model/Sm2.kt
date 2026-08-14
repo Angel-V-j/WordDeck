@@ -43,11 +43,13 @@ enum class ReviewRating(val quality: Sm2Quality) {
     EASY(Sm2Quality.FIVE),
 }
 
-/** Values supplied to the pure SM-2 calculation in the next task. */
+/** Previous review progress and the quality of the current answer. */
 data class Sm2Input(
     val repetition: Int,
     val easeFactor: Double,
     val intervalDays: Int,
+    val successfulReviewCount: Int,
+    val failedReviewCount: Int,
     val quality: Sm2Quality,
 ) {
     companion object {
@@ -55,6 +57,8 @@ data class Sm2Input(
             repetition = Sm2Rules.INITIAL_REPETITION,
             easeFactor = Sm2Rules.INITIAL_EASE_FACTOR,
             intervalDays = Sm2Rules.INITIAL_INTERVAL_DAYS,
+            successfulReviewCount = 0,
+            failedReviewCount = 0,
             quality = quality,
         )
     }
@@ -65,6 +69,9 @@ data class Sm2Result(
     val repetition: Int,
     val easeFactor: Double,
     val intervalDays: Int,
+    val successfulReviewCount: Int,
+    val failedReviewCount: Int,
+    val masteryLevel: MasteryLevel,
     val lastQuality: Sm2Quality,
     val lastReviewedAt: Timestamp,
     val nextReviewAt: Timestamp,
@@ -87,9 +94,25 @@ object Sm2Rules {
     const val RESET_INTERVAL_DAYS = 1
     const val FIRST_SUCCESS_INTERVAL_DAYS = 1
     const val SECOND_SUCCESS_INTERVAL_DAYS = 6
+    const val PROBLEMATIC_FAILURE_THRESHOLD = 3
+    const val MASTERED_REPETITION_THRESHOLD = 4
 
     fun shouldReset(quality: Sm2Quality): Boolean =
         quality.value < MINIMUM_SUCCESS_QUALITY
+
+    fun classifyMastery(
+        repetition: Int,
+        successfulReviewCount: Int,
+        failedReviewCount: Int,
+        lastQuality: Sm2Quality?,
+    ): MasteryLevel = when {
+        successfulReviewCount == 0 && failedReviewCount == 0 -> MasteryLevel.NEW
+        lastQuality != null &&
+            shouldReset(lastQuality) &&
+            failedReviewCount >= PROBLEMATIC_FAILURE_THRESHOLD -> MasteryLevel.PROBLEMATIC
+        repetition >= MASTERED_REPETITION_THRESHOLD -> MasteryLevel.MASTERED
+        else -> MasteryLevel.LEARNING
+    }
 }
 
 /**
@@ -122,6 +145,23 @@ object Sm2Scheduler {
         val newEaseFactor = (input.easeFactor + easeFactorChange)
             .coerceAtLeast(Sm2Rules.MINIMUM_EASE_FACTOR)
 
+        val newSuccessfulReviewCount = if (shouldReset) {
+            input.successfulReviewCount
+        } else {
+            input.successfulReviewCount + 1
+        }
+        val newFailedReviewCount = if (shouldReset) {
+            input.failedReviewCount + 1
+        } else {
+            input.failedReviewCount
+        }
+        val newMasteryLevel = Sm2Rules.classifyMastery(
+            repetition = newRepetition,
+            successfulReviewCount = newSuccessfulReviewCount,
+            failedReviewCount = newFailedReviewCount,
+            lastQuality = input.quality,
+        )
+
         val nextReviewAt = Timestamp(
             reviewedAt.epochMilliseconds +
                 newIntervalDays.toLong() * MILLISECONDS_PER_DAY,
@@ -131,6 +171,9 @@ object Sm2Scheduler {
             repetition = newRepetition,
             easeFactor = newEaseFactor,
             intervalDays = newIntervalDays,
+            successfulReviewCount = newSuccessfulReviewCount,
+            failedReviewCount = newFailedReviewCount,
+            masteryLevel = newMasteryLevel,
             lastQuality = input.quality,
             lastReviewedAt = reviewedAt,
             nextReviewAt = nextReviewAt,
