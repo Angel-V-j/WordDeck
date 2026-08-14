@@ -149,6 +149,7 @@ fun DeckDetailsScreen(
     onFlashcardSearchQueryChange: (String) -> Unit,
     onBack: () -> Unit,
     onStartStudy: () -> Unit = {},
+    onStartTypedStudy: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var showDeleteConfirmation by rememberSaveable { mutableStateOf(false) }
@@ -208,6 +209,7 @@ fun DeckDetailsScreen(
                     onDeleteRequest = { showDeleteConfirmation = true },
                     onBack = onBack,
                     onStartStudy = onStartStudy,
+                    onStartTypedStudy = onStartTypedStudy,
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
@@ -237,6 +239,7 @@ fun DeckDetailsScreen(
                     onDeleteRequest = { showDeleteConfirmation = true },
                     onBack = onBack,
                     onStartStudy = onStartStudy,
+                    onStartTypedStudy = onStartTypedStudy,
                 )
                 FlashcardSection(
                     uiState = flashcardUiState,
@@ -260,6 +263,7 @@ private fun DeckSummary(
     onDeleteRequest: () -> Unit,
     onBack: () -> Unit,
     onStartStudy: () -> Unit,
+    onStartTypedStudy: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -280,6 +284,12 @@ private fun DeckSummary(
             enabled = !isDeleting,
         ) {
             Text(stringResource(R.string.start_study_action))
+        }
+        TextButton(
+            onClick = onStartTypedStudy,
+            enabled = !isDeleting,
+        ) {
+            Text(stringResource(R.string.start_typed_study_action))
         }
         Row {
             TextButton(onClick = onEdit, enabled = !isDeleting) {

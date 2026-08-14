@@ -14,6 +14,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -27,6 +28,8 @@ import com.worddeck.domain.model.ReviewRating
 fun StudyScreen(
     uiState: StudyUiState,
     onRevealAnswer: () -> Unit,
+    onTypedAnswerChange: (String) -> Unit,
+    onSubmitTypedAnswer: () -> Unit,
     onRate: (ReviewRating) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
@@ -83,7 +86,13 @@ fun StudyScreen(
                 if (uiState.stage == StudyStage.ANSWER_REVEALED) {
                     HorizontalDivider()
                     Text(
-                        text = stringResource(R.string.answer_label),
+                        text = stringResource(
+                            if (uiState.mode == StudyMode.TYPED_ANSWER) {
+                                R.string.expected_answer_label
+                            } else {
+                                R.string.answer_label
+                            },
+                        ),
                         style = MaterialTheme.typography.labelLarge,
                     )
                     Text(
@@ -97,13 +106,48 @@ fun StudyScreen(
         }
 
         if (uiState.stage == StudyStage.QUESTION) {
-            Button(
-                onClick = onRevealAnswer,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(stringResource(R.string.show_answer_action))
+            if (uiState.mode == StudyMode.FLASHCARD) {
+                Button(
+                    onClick = onRevealAnswer,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(stringResource(R.string.show_answer_action))
+                }
+            } else {
+                OutlinedTextField(
+                    value = uiState.typedAnswer,
+                    onValueChange = onTypedAnswerChange,
+                    label = { Text(stringResource(R.string.typed_answer_label)) },
+                    isError = uiState.typedAnswerError,
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (uiState.typedAnswerError) {
+                    Text(
+                        text = stringResource(R.string.typed_answer_required),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+                Button(
+                    onClick = onSubmitTypedAnswer,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(stringResource(R.string.check_answer_action))
+                }
             }
         } else if (uiState.stage == StudyStage.ANSWER_REVEALED) {
+            if (uiState.mode == StudyMode.TYPED_ANSWER) {
+                Text(
+                    text = stringResource(
+                        if (uiState.typedAnswerResult == TypedAnswerResult.CORRECT) {
+                            R.string.typed_answer_correct
+                        } else {
+                            R.string.typed_answer_incorrect
+                        },
+                    ),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+            }
             Text(stringResource(R.string.rate_answer_prompt))
             RatingButton(R.string.rating_again, ReviewRating.AGAIN, onRate)
             RatingButton(R.string.rating_hard, ReviewRating.HARD, onRate)

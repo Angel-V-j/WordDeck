@@ -12,7 +12,9 @@ import com.worddeck.domain.model.StudyCard
 import com.worddeck.domain.model.StudySession
 import com.worddeck.domain.model.UserId
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class StudyViewModelTest {
@@ -62,6 +64,76 @@ class StudyViewModelTest {
         assertEquals(StudyStage.QUESTION, viewModel.uiState.value.stage)
         assertEquals(card, viewModel.uiState.value.currentCard)
         assertEquals(emptyMap<CardId, ReviewRating>(), viewModel.uiState.value.ratings)
+    }
+
+    @Test
+    fun `typed answer ignores surrounding whitespace and letter case`() {
+        val card = studyCard("card-1", "hello", "hola")
+        val viewModel = StudyViewModel(
+            session = StudySession(listOf(card)),
+            mode = StudyMode.TYPED_ANSWER,
+        )
+
+        viewModel.updateTypedAnswer("  HoLa  ")
+        viewModel.submitTypedAnswer()
+
+        assertEquals(StudyStage.ANSWER_REVEALED, viewModel.uiState.value.stage)
+        assertEquals(TypedAnswerResult.CORRECT, viewModel.uiState.value.typedAnswerResult)
+        assertFalse(viewModel.uiState.value.typedAnswerError)
+    }
+
+    @Test
+    fun `typed answer reports an incorrect answer`() {
+        val card = studyCard("card-1", "hello", "hola")
+        val viewModel = StudyViewModel(
+            session = StudySession(listOf(card)),
+            mode = StudyMode.TYPED_ANSWER,
+        )
+
+        viewModel.updateTypedAnswer("adios")
+        viewModel.submitTypedAnswer()
+
+        assertEquals(TypedAnswerResult.INCORRECT, viewModel.uiState.value.typedAnswerResult)
+        assertEquals(StudyStage.ANSWER_REVEALED, viewModel.uiState.value.stage)
+    }
+
+    @Test
+    fun `empty typed answer stays on the question and shows validation`() {
+        val card = studyCard("card-1", "hello", "hola")
+        val viewModel = StudyViewModel(
+            session = StudySession(listOf(card)),
+            mode = StudyMode.TYPED_ANSWER,
+        )
+
+        viewModel.updateTypedAnswer("   ")
+        viewModel.submitTypedAnswer()
+
+        assertEquals(StudyStage.QUESTION, viewModel.uiState.value.stage)
+        assertNull(viewModel.uiState.value.typedAnswerResult)
+        assertTrue(viewModel.uiState.value.typedAnswerError)
+    }
+
+    @Test
+    fun `typed answer can be rated only after its result is shown`() {
+        val first = studyCard("card-1", "hello", "hola")
+        val second = studyCard("card-2", "cat", "gato")
+        val viewModel = StudyViewModel(
+            session = StudySession(listOf(first, second)),
+            mode = StudyMode.TYPED_ANSWER,
+        )
+
+        viewModel.rate(ReviewRating.GOOD)
+        assertEquals(first, viewModel.uiState.value.currentCard)
+
+        viewModel.updateTypedAnswer("hola")
+        viewModel.submitTypedAnswer()
+        viewModel.rate(ReviewRating.HARD)
+
+        assertEquals(second, viewModel.uiState.value.currentCard)
+        assertEquals(ReviewRating.HARD, viewModel.uiState.value.ratings[first.flashcard.id])
+        assertEquals("", viewModel.uiState.value.typedAnswer)
+        assertNull(viewModel.uiState.value.typedAnswerResult)
+        assertFalse(viewModel.uiState.value.typedAnswerError)
     }
 }
 

@@ -59,10 +59,17 @@
     <string name="delete_card_dialog_title">Delete card?</string>
     <string name="delete_card_dialog_message">This removes the card and its review history stored on this device.</string>
     <string name="start_study_action">Start study</string>
+    <string name="start_typed_study_action">Type the answer</string>
     <string name="study_title">Study session</string>
     <string name="study_progress">Card %1$d of %2$d</string>
     <string name="show_answer_action">Show answer</string>
     <string name="answer_label">Answer</string>
+    <string name="expected_answer_label">Expected answer</string>
+    <string name="typed_answer_label">Your answer</string>
+    <string name="typed_answer_required">Answer is required</string>
+    <string name="check_answer_action">Check answer</string>
+    <string name="typed_answer_correct">Correct</string>
+    <string name="typed_answer_incorrect">Incorrect</string>
     <string name="rate_answer_prompt">How difficult was this card?</string>
     <string name="rating_again">Again</string>
     <string name="rating_hard">Hard</string>
