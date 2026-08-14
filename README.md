@@ -22,7 +22,7 @@ production зависимостите се създават в manual `AppContai
 умишлено няма:
 
 - Firestore, production Firebase configuration или credentials;
-- SM-2 алгоритъм, study session или statistics;
+- интегриран study session или statistics;
 - synchronization между устройства;
 - dependency injection framework.
 
@@ -108,13 +108,14 @@ Firebase по-късно ще синхронизира cloud данните, б�
 
 ## Spaced repetition
 
-Бъдещият scheduler ще бъде чист Kotlin код, отделен от Android, Room и
-Firebase, за да може да се unit-test-ва независимо. Старият custom scheduler
-не е пренесен. Domain слоят вече дефинира валидирана SM-2 quality `0..5`,
+Scheduler-ът е чист Kotlin код, отделен от Android, Room и Firebase, и се
+unit-test-ва независимо. Старият custom scheduler не е пренесен. Domain слоят
+дефинира валидирана SM-2 quality `0..5`,
 начални `repetition = 0`, `easeFactor = 2.5` и `intervalDays = 0`, minimum ease
 factor `1.3`, reset при quality под `3`, първи интервали `1 / 6` дни и mapping
-`Again / Hard / Good / Easy` към `0 / 3 / 4 / 5`. Самото изчисляване на
-следващото състояние още не е имплементирано.
+`Again / Hard / Good / Easy` към `0 / 3 / 4 / 5`. Алгоритъмът получава review
+timestamp отвън и връща следващите repetition, ease factor, interval и review
+дата. Интеграцията му с учебната сесия и Room предстои.
 
 ## Локална конфигурация и secrets
 
@@ -134,7 +135,7 @@ code или README.
 
 ## Следващи основни стъпки
 
-1. дефиниране и unit testing на чистия SM-2 алгоритъм;
-2. учебна сесия и атомарно записване на review state/history;
+1. интеграция на чистия SM-2 алгоритъм в учебна сесия;
+2. атомарно записване на review state/history;
 3. минимална Firestore синхронизация върху Room source of truth;
 4. статистики, приемателно тестване и дипломна документация.
