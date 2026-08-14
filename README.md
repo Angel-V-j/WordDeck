@@ -14,6 +14,7 @@ presentation, domain и data слоевете. В момента работят:
 - регистрация, вход, възстановяване на Firebase сесия, профил и изход;
 - локално създаване, редактиране, изтриване, търсене и филтриране на тестета;
 - локално създаване, редактиране, изтриване и търсене на карти;
+- flashcard study flow с reveal и `Again / Hard / Good / Easy` оценяване;
 - реактивно показване на Room данните чрез `Flow`, включително след restart;
 - адаптивни Compose екрани и автоматизирани unit/Room/Compose тестове.
 
@@ -22,7 +23,7 @@ production зависимостите се създават в manual `AppContai
 умишлено няма:
 
 - Firestore, production Firebase configuration или credentials;
-- интегриран study session или statistics;
+- записване на study резултатите или statistics;
 - synchronization между устройства;
 - dependency injection framework.
 
@@ -117,8 +118,9 @@ factor `1.3`, reset при quality под `3`, първи интервали `1 
 timestamp отвън и връща следващите repetition, ease factor, interval и review
 дата. При всеки review се актуализират success/failure counters и се определя
 `NEW`, `LEARNING`, `MASTERED` или `PROBLEMATIC` ниво. Чиста domain функция
-избира new и due картите за текущ user/deck към подаден timestamp. UI flow-ът,
-зареждането през repositories и записването в Room предстоят.
+избира new и due картите за текущ user/deck към подаден timestamp. Reveal/rate
+UI flow-ът работи и пази текущата сесия във ViewModel. Зареждането на review
+states през repository и записването в Room предстоят.
 
 ## Локална конфигурация и secrets
 

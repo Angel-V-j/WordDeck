@@ -24,6 +24,7 @@ import com.worddeck.common.IdGenerator
 import com.worddeck.common.OperationStatus
 import com.worddeck.domain.model.User
 import com.worddeck.domain.model.Deck
+import com.worddeck.domain.model.startStudySession
 import com.worddeck.domain.repository.DeckRepository
 import com.worddeck.domain.repository.FlashcardRepository
 import com.worddeck.feature.auth.AuthUiState
@@ -38,6 +39,9 @@ import com.worddeck.feature.decks.FlashcardViewModel
 import com.worddeck.feature.home.DeckDetailsScreen
 import com.worddeck.feature.home.HomeScreen
 import com.worddeck.feature.home.HomeViewModel
+import com.worddeck.feature.study.StudyScreen
+import com.worddeck.feature.study.StudyUiState
+import com.worddeck.feature.study.StudyViewModel
 
 object AppDestination {
     private const val DECK_ID = "deckId"
@@ -47,10 +51,13 @@ object AppDestination {
     const val HOME = "main/home"
     const val PROFILE = "main/profile"
     const val DECK_DETAILS = "main/decks/{$DECK_ID}"
+    const val STUDY_DECK = "main/decks/{$DECK_ID}/study"
     const val CREATE_DECK = "main/decks/create"
     const val EDIT_DECK = "main/decks/{$DECK_ID}/edit"
 
     fun deckDetails(deckId: String): String = "main/decks/${Uri.encode(deckId)}"
+
+    fun studyDeck(deckId: String): String = "main/decks/${Uri.encode(deckId)}/study"
 
     fun editDeck(deckId: String): String = "main/decks/${Uri.encode(deckId)}/edit"
 }
@@ -249,7 +256,75 @@ private fun MainNavigation(
                     onClearFlashcardOperation = flashcardViewModel::clearOperation,
                     onFlashcardSearchQueryChange = flashcardViewModel::updateSearchQuery,
                     onBack = { navController.popBackStack() },
+                    onStartStudy = {
+                        navController.navigate(AppDestination.studyDeck(currentDeck.id.value))
+                    },
                 )
+            }
+        }
+        composable(
+            route = AppDestination.STUDY_DECK,
+            arguments = listOf(navArgument("deckId") { type = NavType.StringType }),
+        ) { backStackEntry ->
+            val selectedId = backStackEntry.arguments?.getString("deckId")
+            val currentDeck = homeUiState.decks.firstOrNull { it.id.value == selectedId }
+
+            if (currentDeck == null) {
+                StudyScreen(
+                    uiState = StudyUiState(),
+                    onRevealAnswer = {},
+                    onRate = {},
+                    onBack = { navController.popBackStack() },
+                )
+            } else {
+                val flashcardViewModel = viewModel<FlashcardViewModel>(
+                    key = "study-cards-${currentDeck.id.value}",
+                ) {
+                    FlashcardViewModel(
+                        flashcardRepository = flashcardRepository,
+                        deckId = currentDeck.id,
+                        idGenerator = idGenerator,
+                        clock = clock,
+                    )
+                }
+                val flashcardState by flashcardViewModel.uiState.collectAsStateWithLifecycle()
+
+                when (flashcardState.listStatus) {
+                    OperationStatus.IDLE,
+                    OperationStatus.LOADING,
+                    -> LoadingScreen(Modifier)
+                    OperationStatus.ERROR -> StudyScreen(
+                        uiState = StudyUiState(),
+                        onRevealAnswer = {},
+                        onRate = {},
+                        onBack = { navController.popBackStack() },
+                    )
+                    OperationStatus.SUCCESS -> {
+                        val startedAt = remember(currentDeck.id.value) { clock.now() }
+                        val session = remember(currentDeck.id, flashcardState.cards, startedAt) {
+                            startStudySession(
+                                userId = user.id,
+                                deck = currentDeck,
+                                flashcards = flashcardState.cards,
+                                reviewStates = emptyList(),
+                                startedAt = startedAt,
+                            )
+                        }
+                        val studyViewModel = viewModel<StudyViewModel>(
+                            key = "study-${currentDeck.id.value}-${startedAt.epochMilliseconds}",
+                        ) {
+                            StudyViewModel(session)
+                        }
+                        val studyState by studyViewModel.uiState.collectAsStateWithLifecycle()
+
+                        StudyScreen(
+                            uiState = studyState,
+                            onRevealAnswer = studyViewModel::revealAnswer,
+                            onRate = studyViewModel::rate,
+                            onBack = { navController.popBackStack() },
+                        )
+                    }
+                }
             }
         }
         composable(AppDestination.CREATE_DECK) {
