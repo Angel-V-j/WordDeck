@@ -110,9 +110,11 @@ Firebase по-късно ще синхронизира cloud данните, б�
 
 Бъдещият scheduler ще бъде чист Kotlin код, отделен от Android, Room и
 Firebase, за да може да се unit-test-ва независимо. Старият custom scheduler
-не е пренесен. `ReviewEvent` и `ReviewState` вече могат да се съхраняват
-локално, но SM-2 update логиката и mapping-ът от UI оценка към quality `0..5`
-още не са имплементирани.
+не е пренесен. Domain слоят вече дефинира валидирана SM-2 quality `0..5`,
+начални `repetition = 0`, `easeFactor = 2.5` и `intervalDays = 0`, minimum ease
+factor `1.3`, reset при quality под `3`, първи интервали `1 / 6` дни и mapping
+`Again / Hard / Good / Easy` към `0 / 3 / 4 / 5`. Самото изчисляване на
+следващото състояние още не е имплементирано.
 
 ## Локална конфигурация и secrets
 

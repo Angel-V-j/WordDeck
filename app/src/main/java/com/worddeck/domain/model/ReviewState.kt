@@ -25,7 +25,7 @@ data class ReviewState(
     val easeFactor: Double,
     val intervalDays: Int,
     val lastReviewedAt: Timestamp?,
-    val lastQuality: Int?,
+    val lastQuality: Sm2Quality?,
     val nextReviewAt: Timestamp,
     val successfulReviewCount: Int,
     val failedReviewCount: Int,
