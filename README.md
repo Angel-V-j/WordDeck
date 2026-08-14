@@ -116,9 +116,9 @@ factor `1.3`, reset при quality под `3`, първи интервали `1 
 `Again / Hard / Good / Easy` към `0 / 3 / 4 / 5`. Алгоритъмът получава review
 timestamp отвън и връща следващите repetition, ease factor, interval и review
 дата. При всеки review се актуализират success/failure counters и се определя
-`NEW`, `LEARNING`, `MASTERED` или `PROBLEMATIC` ниво според правилата в
-[`docs/statistics.md`](docs/statistics.md). Интеграцията с учебната сесия и
-Room предстои.
+`NEW`, `LEARNING`, `MASTERED` или `PROBLEMATIC` ниво. Чиста domain функция
+избира new и due картите за текущ user/deck към подаден timestamp. UI flow-ът,
+зареждането през repositories и записването в Room предстоят.
 
 ## Локална конфигурация и secrets
 

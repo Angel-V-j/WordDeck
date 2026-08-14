@@ -30,4 +30,25 @@ data class ReviewState(
     val successfulReviewCount: Int,
     val failedReviewCount: Int,
     val masteryLevel: MasteryLevel,
-)
+) {
+    companion object {
+        /** Creates the in-memory progress of a card that has never been reviewed. */
+        fun initial(
+            userId: UserId,
+            cardId: CardId,
+            dueAt: Timestamp,
+        ): ReviewState = ReviewState(
+            userId = userId,
+            cardId = cardId,
+            repetition = Sm2Rules.INITIAL_REPETITION,
+            easeFactor = Sm2Rules.INITIAL_EASE_FACTOR,
+            intervalDays = Sm2Rules.INITIAL_INTERVAL_DAYS,
+            lastReviewedAt = null,
+            lastQuality = null,
+            nextReviewAt = dueAt,
+            successfulReviewCount = 0,
+            failedReviewCount = 0,
+            masteryLevel = MasteryLevel.NEW,
+        )
+    }
+}
