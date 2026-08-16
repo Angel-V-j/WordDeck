@@ -16,6 +16,7 @@ presentation, domain и data слоевете. В момента работят:
 - локално създаване, редактиране, изтриване и търсене на карти;
 - flashcard study flow с reveal и `Again / Hard / Good / Easy` оценяване;
 - typed-answer режим с точно сравнение след `trim` и игнориране на главни/малки букви;
+- SM-2 обновяване с атомарен Room запис на review state и отделен history event;
 - реактивно показване на Room данните чрез `Flow`, включително след restart;
 - адаптивни Compose екрани и автоматизирани unit/Room/Compose тестове.
 
@@ -24,7 +25,7 @@ production зависимостите се създават в manual `AppContai
 умишлено няма:
 
 - Firestore, production Firebase configuration или credentials;
-- записване на study резултатите или statistics;
+- history UI или statistics;
 - synchronization между устройства;
 - dependency injection framework.
 
@@ -98,9 +99,9 @@ Repository abstraction
 Room source of truth
 ```
 
-UseCase се добавя само за координирана бизнес операция. Например бъдещият
-review flow ще мине през `Compose → ViewModel → ReviewFlashcardUseCase`, който
-ще координира SM-2 и записването през repository в Room. Firestore по-късно ще
+UseCase се добавя само за координирана бизнес операция. Review flow минава през
+`Compose → ViewModel → ReviewFlashcardUseCase`, който координира SM-2 и
+атомарното записване на state/event през repository в Room. Firestore по-късно ще
 синхронизира Room данните.
 
 `domain` не трябва да зависи от Android, Compose, Room или Firebase. При
@@ -141,7 +142,6 @@ code или README.
 
 ## Следващи основни стъпки
 
-1. интеграция на чистия SM-2 алгоритъм в учебна сесия;
-2. атомарно записване на review state/history;
-3. минимална Firestore синхронизация върху Room source of truth;
-4. статистики, приемателно тестване и дипломна документация.
+1. history изглед и summary при край на учебна сесия;
+2. минимална Firestore синхронизация върху Room source of truth;
+3. статистики, приемателно тестване и дипломна документация.

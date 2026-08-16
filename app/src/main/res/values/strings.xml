@@ -77,6 +77,8 @@
     <string name="rating_easy">Easy</string>
     <string name="no_due_cards">No cards are due</string>
     <string name="study_complete">Session complete</string>
+    <string name="saving_review">Saving review…</string>
+    <string name="review_save_error">The review could not be saved. Please try again.</string>
     <string name="welcome_user">Welcome, %1$s</string>
     <string name="email_identity">Email: %1$s</string>
     <string name="save_display_name_action">Save display name</string>

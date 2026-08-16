@@ -82,10 +82,13 @@ class TextValuesTest {
     fun `different identifier types are not interchangeable`() {
         val userId = UserId.from("user-1").successValue()
         val deckId = DeckId.from("deck-1").successValue()
+        val reviewEventId = ReviewEventId.from("review-1").successValue()
 
         assertEquals("user-1", userId.value)
         assertEquals("deck-1", deckId.value)
+        assertEquals("review-1", reviewEventId.value)
         assertTrue(userId::class != deckId::class)
+        assertTrue(deckId::class != reviewEventId::class)
     }
 
     @Test

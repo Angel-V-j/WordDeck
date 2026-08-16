@@ -1,13 +1,19 @@
 package com.worddeck.data.repository
 
 import android.database.sqlite.SQLiteException
+import androidx.room.withTransaction
 import com.worddeck.common.AppError
 import com.worddeck.common.AppResult
 import com.worddeck.data.local.dao.DeckDao
 import com.worddeck.data.local.dao.FlashcardDao
+import com.worddeck.data.local.database.WordDeckDatabase
 import com.worddeck.data.local.mapper.toDomainDecks
 import com.worddeck.data.local.mapper.toDomainFlashcards
+import com.worddeck.data.local.mapper.toDomainReviewEvents
+import com.worddeck.data.local.mapper.toDomainReviewStates
 import com.worddeck.data.local.mapper.toEntity
+import com.worddeck.domain.model.ReviewEvent
+import com.worddeck.domain.model.ReviewState
 import com.worddeck.domain.model.CardId
 import com.worddeck.domain.model.Deck
 import com.worddeck.domain.model.DeckId
@@ -15,6 +21,7 @@ import com.worddeck.domain.model.Flashcard
 import com.worddeck.domain.model.UserId
 import com.worddeck.domain.repository.DeckRepository
 import com.worddeck.domain.repository.FlashcardRepository
+import com.worddeck.domain.repository.ReviewRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
@@ -52,6 +59,35 @@ class LocalFlashcardRepository(
 
     override suspend fun delete(id: CardId): AppResult<Unit> = databaseWrite("flashcard") {
         flashcardDao.deleteById(id.value)
+    }
+}
+
+/** Keeps review progress and its immutable history event in one Room transaction. */
+class LocalReviewRepository(
+    private val database: WordDeckDatabase,
+) : ReviewRepository {
+    override fun observeStates(userId: UserId): Flow<AppResult<List<ReviewState>>> =
+        database.reviewStateDao()
+            .observeByUser(userId.value)
+            .map { it.toDomainReviewStates() }
+            .asDatabaseResult("review states")
+
+    override fun observeHistory(
+        userId: UserId,
+        cardId: CardId,
+    ): Flow<AppResult<List<ReviewEvent>>> = database.reviewEventDao()
+        .observeByUserAndCard(userId.value, cardId.value)
+        .map { it.toDomainReviewEvents() }
+        .asDatabaseResult("review history")
+
+    override suspend fun recordReview(
+        reviewState: ReviewState,
+        reviewEvent: ReviewEvent,
+    ): AppResult<Unit> = databaseWrite("review") {
+        database.withTransaction {
+            database.reviewStateDao().save(reviewState.toEntity())
+            database.reviewEventDao().insert(reviewEvent.toEntity())
+        }
     }
 }
 

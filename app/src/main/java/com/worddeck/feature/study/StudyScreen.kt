@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.worddeck.R
+import com.worddeck.common.OperationStatus
 import com.worddeck.domain.model.ReviewRating
 
 @Composable
@@ -148,11 +149,21 @@ fun StudyScreen(
                     style = MaterialTheme.typography.titleMedium,
                 )
             }
+            if (uiState.reviewStatus == OperationStatus.ERROR) {
+                Text(
+                    text = stringResource(R.string.review_save_error),
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+            if (uiState.reviewStatus == OperationStatus.LOADING) {
+                Text(stringResource(R.string.saving_review))
+            }
             Text(stringResource(R.string.rate_answer_prompt))
-            RatingButton(R.string.rating_again, ReviewRating.AGAIN, onRate)
-            RatingButton(R.string.rating_hard, ReviewRating.HARD, onRate)
-            RatingButton(R.string.rating_good, ReviewRating.GOOD, onRate)
-            RatingButton(R.string.rating_easy, ReviewRating.EASY, onRate)
+            val ratingEnabled = uiState.reviewStatus != OperationStatus.LOADING
+            RatingButton(R.string.rating_again, ReviewRating.AGAIN, ratingEnabled, onRate)
+            RatingButton(R.string.rating_hard, ReviewRating.HARD, ratingEnabled, onRate)
+            RatingButton(R.string.rating_good, ReviewRating.GOOD, ratingEnabled, onRate)
+            RatingButton(R.string.rating_easy, ReviewRating.EASY, ratingEnabled, onRate)
         }
     }
 }
@@ -161,10 +172,12 @@ fun StudyScreen(
 private fun RatingButton(
     label: Int,
     rating: ReviewRating,
+    enabled: Boolean,
     onRate: (ReviewRating) -> Unit,
 ) {
     OutlinedButton(
         onClick = { onRate(rating) },
+        enabled = enabled,
         modifier = Modifier.fillMaxWidth(),
     ) {
         Text(stringResource(label))

@@ -27,6 +27,14 @@ value class CardId private constructor(val value: String) {
     }
 }
 
+@JvmInline
+value class ReviewEventId private constructor(val value: String) {
+    companion object {
+        fun from(raw: String): AppResult<ReviewEventId> =
+            validateId(raw, "review event id") { ReviewEventId(it) }
+    }
+}
+
 private fun <T> validateId(
     raw: String,
     field: String,

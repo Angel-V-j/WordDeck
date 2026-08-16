@@ -1,13 +1,19 @@
 package com.worddeck.feature.study
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.worddeck.common.AppError
+import com.worddeck.common.AppResult
+import com.worddeck.common.OperationStatus
 import com.worddeck.domain.model.CardId
 import com.worddeck.domain.model.ReviewRating
 import com.worddeck.domain.model.StudyCard
 import com.worddeck.domain.model.StudySession
+import com.worddeck.domain.model.UserId
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 enum class StudyStage {
     QUESTION,
@@ -34,11 +40,15 @@ data class StudyUiState(
     val typedAnswer: String = "",
     val typedAnswerResult: TypedAnswerResult? = null,
     val typedAnswerError: Boolean = false,
+    val reviewStatus: OperationStatus = OperationStatus.IDLE,
+    val error: AppError? = null,
     val ratings: Map<CardId, ReviewRating> = emptyMap(),
 )
 
 class StudyViewModel(
     session: StudySession,
+    private val currentUserId: UserId,
+    private val reviewFlashcard: ReviewFlashcardUseCase,
     mode: StudyMode = StudyMode.FLASHCARD,
 ) : ViewModel() {
     private val cards = session.cards
@@ -103,8 +113,36 @@ class StudyViewModel(
         val currentState = _uiState.value
         val currentCard = currentState.currentCard ?: return
         if (currentState.stage != StudyStage.ANSWER_REVEALED) return
+        if (currentState.reviewStatus == OperationStatus.LOADING) return
 
-        val updatedRatings = currentState.ratings + (currentCard.flashcard.id to rating)
+        _uiState.value = currentState.copy(
+            reviewStatus = OperationStatus.LOADING,
+            error = null,
+        )
+        viewModelScope.launch {
+            val result = reviewFlashcard(
+                currentUserId = currentUserId,
+                currentState = currentCard.reviewState,
+                rating = rating,
+            )
+            when (result) {
+                is AppResult.Success -> moveToNextCard(currentState, currentCard.flashcard.id, rating)
+                is AppResult.Failure -> {
+                    _uiState.value = currentState.copy(
+                        reviewStatus = OperationStatus.ERROR,
+                        error = result.error,
+                    )
+                }
+            }
+        }
+    }
+
+    private fun moveToNextCard(
+        currentState: StudyUiState,
+        reviewedCardId: CardId,
+        rating: ReviewRating,
+    ) {
+        val updatedRatings = currentState.ratings + (reviewedCardId to rating)
         currentIndex += 1
 
         if (currentIndex >= cards.size) {
@@ -115,6 +153,8 @@ class StudyViewModel(
                 typedAnswer = "",
                 typedAnswerResult = null,
                 typedAnswerError = false,
+                reviewStatus = OperationStatus.SUCCESS,
+                error = null,
                 ratings = updatedRatings,
             )
         } else {
@@ -125,6 +165,8 @@ class StudyViewModel(
                 typedAnswer = "",
                 typedAnswerResult = null,
                 typedAnswerError = false,
+                reviewStatus = OperationStatus.IDLE,
+                error = null,
                 ratings = updatedRatings,
             )
         }

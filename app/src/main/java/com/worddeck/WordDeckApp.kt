@@ -12,6 +12,7 @@ import com.worddeck.common.Clock
 import com.worddeck.common.IdGenerator
 import com.worddeck.domain.repository.DeckRepository
 import com.worddeck.domain.repository.FlashcardRepository
+import com.worddeck.domain.repository.ReviewRepository
 import com.worddeck.feature.auth.AuthViewModel
 import com.worddeck.navigation.AppNavigation
 import com.worddeck.ui.theme.WordDeckTheme
@@ -25,6 +26,7 @@ fun WordDeckApp(appContainer: AppContainer) {
         authViewModel = authViewModel,
         deckRepository = appContainer.deckRepository,
         flashcardRepository = appContainer.flashcardRepository,
+        reviewRepository = appContainer.reviewRepository,
         idGenerator = appContainer.idGenerator,
         clock = appContainer.clock,
     )
@@ -35,6 +37,7 @@ fun WordDeckContent(
     authViewModel: AuthViewModel,
     deckRepository: DeckRepository,
     flashcardRepository: FlashcardRepository,
+    reviewRepository: ReviewRepository,
     idGenerator: IdGenerator,
     clock: Clock,
 ) {
@@ -46,6 +49,7 @@ fun WordDeckContent(
                 uiState = uiState,
                 deckRepository = deckRepository,
                 flashcardRepository = flashcardRepository,
+                reviewRepository = reviewRepository,
                 idGenerator = idGenerator,
                 clock = clock,
                 onLogin = authViewModel::login,

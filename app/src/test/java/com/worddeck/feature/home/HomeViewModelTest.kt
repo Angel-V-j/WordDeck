@@ -13,6 +13,8 @@ import com.worddeck.domain.model.DeckTitle
 import com.worddeck.domain.model.DeckVisibility
 import com.worddeck.domain.model.CardId
 import com.worddeck.domain.model.Flashcard
+import com.worddeck.domain.model.ReviewEvent
+import com.worddeck.domain.model.ReviewState
 import com.worddeck.domain.model.DisplayName
 import com.worddeck.domain.model.EmailAddress
 import com.worddeck.domain.model.User
@@ -20,6 +22,7 @@ import com.worddeck.domain.model.UserId
 import com.worddeck.domain.repository.AuthenticationRepository
 import com.worddeck.domain.repository.DeckRepository
 import com.worddeck.domain.repository.FlashcardRepository
+import com.worddeck.domain.repository.ReviewRepository
 import com.worddeck.testing.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -56,6 +59,7 @@ class HomeViewModelTest {
             authenticationRepository = UnusedAuthenticationRepository,
             deckRepository = repository,
             flashcardRepository = UnusedFlashcardRepository,
+            reviewRepository = UnusedReviewRepository,
         )
         val viewModel = HomeViewModel(
             deckRepository = appContainer.deckRepository,
@@ -274,6 +278,21 @@ private object UnusedFlashcardRepository : FlashcardRepository {
     override suspend fun save(flashcard: Flashcard): AppResult<Unit> = unusedDependency()
 
     override suspend fun delete(id: CardId): AppResult<Unit> = unusedDependency()
+}
+
+private object UnusedReviewRepository : ReviewRepository {
+    override fun observeStates(userId: UserId): Flow<AppResult<List<ReviewState>>> =
+        unusedDependency()
+
+    override fun observeHistory(
+        userId: UserId,
+        cardId: CardId,
+    ): Flow<AppResult<List<ReviewEvent>>> = unusedDependency()
+
+    override suspend fun recordReview(
+        reviewState: ReviewState,
+        reviewEvent: ReviewEvent,
+    ): AppResult<Unit> = unusedDependency()
 }
 
 private fun unusedDependency(): Nothing = error("This dependency is not used by HomeViewModel")

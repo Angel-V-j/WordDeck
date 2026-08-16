@@ -20,13 +20,16 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import com.worddeck.common.Clock
+import com.worddeck.common.AppResult
 import com.worddeck.common.IdGenerator
 import com.worddeck.common.OperationStatus
 import com.worddeck.domain.model.User
 import com.worddeck.domain.model.Deck
+import com.worddeck.domain.model.ReviewState
 import com.worddeck.domain.model.startStudySession
 import com.worddeck.domain.repository.DeckRepository
 import com.worddeck.domain.repository.FlashcardRepository
+import com.worddeck.domain.repository.ReviewRepository
 import com.worddeck.feature.auth.AuthUiState
 import com.worddeck.feature.auth.LoginScreen
 import com.worddeck.feature.auth.ProfileScreen
@@ -41,6 +44,7 @@ import com.worddeck.feature.home.HomeScreen
 import com.worddeck.feature.home.HomeViewModel
 import com.worddeck.feature.study.StudyScreen
 import com.worddeck.feature.study.StudyMode
+import com.worddeck.feature.study.ReviewFlashcardUseCase
 import com.worddeck.feature.study.StudyUiState
 import com.worddeck.feature.study.StudyViewModel
 
@@ -73,6 +77,7 @@ fun AppNavigation(
     uiState: AuthUiState,
     deckRepository: DeckRepository,
     flashcardRepository: FlashcardRepository,
+    reviewRepository: ReviewRepository,
     idGenerator: IdGenerator,
     clock: Clock,
     onLogin: (email: String, password: String) -> Unit,
@@ -96,6 +101,7 @@ fun AppNavigation(
             uiState = uiState,
             deckRepository = deckRepository,
             flashcardRepository = flashcardRepository,
+            reviewRepository = reviewRepository,
             idGenerator = idGenerator,
             clock = clock,
             user = currentUser,
@@ -148,6 +154,7 @@ private fun MainNavigation(
     uiState: AuthUiState,
     deckRepository: DeckRepository,
     flashcardRepository: FlashcardRepository,
+    reviewRepository: ReviewRepository,
     idGenerator: IdGenerator,
     clock: Clock,
     user: User,
@@ -164,6 +171,17 @@ private fun MainNavigation(
         )
     }
     val homeUiState by homeViewModel.uiState.collectAsStateWithLifecycle()
+    var reviewStatesResult by remember(user.id) {
+        mutableStateOf<AppResult<List<ReviewState>>?>(null)
+    }
+    LaunchedEffect(user.id, reviewRepository) {
+        reviewRepository.observeStates(user.id).collect { result ->
+            reviewStatesResult = result
+        }
+    }
+    val reviewFlashcard = remember(reviewRepository, clock, idGenerator) {
+        ReviewFlashcardUseCase(reviewRepository, clock, idGenerator)
+    }
     NavHost(
         navController = navController,
         startDestination = AppDestination.HOME,
@@ -326,32 +344,53 @@ private fun MainNavigation(
                         onRate = {},
                         onBack = { navController.popBackStack() },
                     )
-                    OperationStatus.SUCCESS -> {
-                        val startedAt = remember(currentDeck.id.value) { clock.now() }
-                        val session = remember(currentDeck.id, flashcardState.cards, startedAt) {
-                            startStudySession(
-                                userId = user.id,
-                                deck = currentDeck,
-                                flashcards = flashcardState.cards,
-                                reviewStates = emptyList(),
-                                startedAt = startedAt,
-                            )
-                        }
-                        val studyViewModel = viewModel<StudyViewModel>(
-                            key = "study-${currentDeck.id.value}-${selectedMode.name}-${startedAt.epochMilliseconds}",
-                        ) {
-                            StudyViewModel(session, selectedMode)
-                        }
-                        val studyState by studyViewModel.uiState.collectAsStateWithLifecycle()
-
-                        StudyScreen(
-                            uiState = studyState,
-                            onRevealAnswer = studyViewModel::revealAnswer,
-                            onTypedAnswerChange = studyViewModel::updateTypedAnswer,
-                            onSubmitTypedAnswer = studyViewModel::submitTypedAnswer,
-                            onRate = studyViewModel::rate,
+                    OperationStatus.SUCCESS -> when (val states = reviewStatesResult) {
+                        null -> LoadingScreen(Modifier)
+                        is AppResult.Failure -> StudyScreen(
+                            uiState = StudyUiState(),
+                            onRevealAnswer = {},
+                            onTypedAnswerChange = {},
+                            onSubmitTypedAnswer = {},
+                            onRate = {},
                             onBack = { navController.popBackStack() },
                         )
+                        is AppResult.Success -> {
+                            val startedAt = remember(currentDeck.id.value) { clock.now() }
+                            val session = remember(
+                                currentDeck.id,
+                                flashcardState.cards,
+                                states.value,
+                                startedAt,
+                            ) {
+                                startStudySession(
+                                    userId = user.id,
+                                    deck = currentDeck,
+                                    flashcards = flashcardState.cards,
+                                    reviewStates = states.value,
+                                    startedAt = startedAt,
+                                )
+                            }
+                            val studyViewModel = viewModel<StudyViewModel>(
+                                key = "study-${currentDeck.id.value}-${selectedMode.name}-${startedAt.epochMilliseconds}",
+                            ) {
+                                StudyViewModel(
+                                    session = session,
+                                    currentUserId = user.id,
+                                    reviewFlashcard = reviewFlashcard,
+                                    mode = selectedMode,
+                                )
+                            }
+                            val studyState by studyViewModel.uiState.collectAsStateWithLifecycle()
+
+                            StudyScreen(
+                                uiState = studyState,
+                                onRevealAnswer = studyViewModel::revealAnswer,
+                                onTypedAnswerChange = studyViewModel::updateTypedAnswer,
+                                onSubmitTypedAnswer = studyViewModel::submitTypedAnswer,
+                                onRate = studyViewModel::rate,
+                                onBack = { navController.popBackStack() },
+                            )
+                        }
                     }
                 }
             }
