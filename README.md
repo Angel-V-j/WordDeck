@@ -18,6 +18,7 @@ presentation, domain и data слоевете. В момента работят:
 - typed-answer режим с точно сравнение след `trim` и игнориране на главни/малки букви;
 - SM-2 обновяване с атомарен Room запис на review state и отделен history event;
 - history по карта и summary при край на учебна сесия;
+- реактивни общи и deck-scoped counts за mastery нивата и due картите;
 - реактивно показване на Room данните чрез `Flow`, включително след restart;
 - адаптивни Compose екрани и автоматизирани unit/Room/Compose тестове.
 

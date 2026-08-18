@@ -4,6 +4,7 @@ import android.database.sqlite.SQLiteException
 import androidx.room.withTransaction
 import com.worddeck.common.AppError
 import com.worddeck.common.AppResult
+import com.worddeck.common.Timestamp
 import com.worddeck.data.local.dao.DeckDao
 import com.worddeck.data.local.dao.FlashcardDao
 import com.worddeck.data.local.database.WordDeckDatabase
@@ -12,12 +13,13 @@ import com.worddeck.data.local.mapper.toDomainFlashcards
 import com.worddeck.data.local.mapper.toDomainReviewEvents
 import com.worddeck.data.local.mapper.toDomainReviewStates
 import com.worddeck.data.local.mapper.toEntity
-import com.worddeck.domain.model.ReviewEvent
-import com.worddeck.domain.model.ReviewState
 import com.worddeck.domain.model.CardId
 import com.worddeck.domain.model.Deck
 import com.worddeck.domain.model.DeckId
 import com.worddeck.domain.model.Flashcard
+import com.worddeck.domain.model.ReviewEvent
+import com.worddeck.domain.model.ReviewState
+import com.worddeck.domain.model.StudyProgress
 import com.worddeck.domain.model.UserId
 import com.worddeck.domain.repository.DeckRepository
 import com.worddeck.domain.repository.FlashcardRepository
@@ -80,6 +82,21 @@ class LocalReviewRepository(
         .map { it.toDomainReviewEvents() }
         .asDatabaseResult("review history")
 
+    override fun observeProgress(
+        userId: UserId,
+        timestamp: Timestamp,
+    ): Flow<AppResult<StudyProgress>> = database.reviewStateDao()
+        .observeProgress(userId.value, timestamp.epochMilliseconds)
+        .asSuccessfulDatabaseResult("study progress")
+
+    override fun observeProgressByDeck(
+        userId: UserId,
+        deckId: DeckId,
+        timestamp: Timestamp,
+    ): Flow<AppResult<StudyProgress>> = database.reviewStateDao()
+        .observeProgressByDeck(userId.value, deckId.value, timestamp.epochMilliseconds)
+        .asSuccessfulDatabaseResult("study progress")
+
     override suspend fun recordReview(
         reviewState: ReviewState,
         reviewEvent: ReviewEvent,
@@ -97,6 +114,10 @@ private fun <T> Flow<AppResult<T>>.asDatabaseResult(resource: String): Flow<AppR
         if (error !is SQLiteException) throw error
         emit(databaseFailure(resource))
     }
+
+private fun <T> Flow<T>.asSuccessfulDatabaseResult(resource: String): Flow<AppResult<T>> =
+    map<T, AppResult<T>> { value -> AppResult.Success(value) }
+        .asDatabaseResult(resource)
 
 private suspend fun databaseWrite(
     resource: String,

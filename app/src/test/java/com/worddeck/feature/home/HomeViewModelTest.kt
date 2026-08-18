@@ -15,6 +15,7 @@ import com.worddeck.domain.model.CardId
 import com.worddeck.domain.model.Flashcard
 import com.worddeck.domain.model.ReviewEvent
 import com.worddeck.domain.model.ReviewState
+import com.worddeck.domain.model.StudyProgress
 import com.worddeck.domain.model.DisplayName
 import com.worddeck.domain.model.EmailAddress
 import com.worddeck.domain.model.User
@@ -288,6 +289,17 @@ private object UnusedReviewRepository : ReviewRepository {
         userId: UserId,
         cardId: CardId,
     ): Flow<AppResult<List<ReviewEvent>>> = unusedDependency()
+
+    override fun observeProgress(
+        userId: UserId,
+        timestamp: Timestamp,
+    ): Flow<AppResult<StudyProgress>> = unusedDependency()
+
+    override fun observeProgressByDeck(
+        userId: UserId,
+        deckId: DeckId,
+        timestamp: Timestamp,
+    ): Flow<AppResult<StudyProgress>> = unusedDependency()
 
     override suspend fun recordReview(
         reviewState: ReviewState,

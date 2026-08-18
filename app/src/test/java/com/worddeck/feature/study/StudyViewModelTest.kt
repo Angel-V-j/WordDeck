@@ -15,6 +15,7 @@ import com.worddeck.domain.model.ReviewEvent
 import com.worddeck.domain.model.ReviewState
 import com.worddeck.domain.model.StudyCard
 import com.worddeck.domain.model.StudySession
+import com.worddeck.domain.model.StudyProgress
 import com.worddeck.domain.model.UserId
 import com.worddeck.domain.repository.ReviewRepository
 import com.worddeck.testing.MainDispatcherRule
@@ -260,6 +261,17 @@ private class RecordingReviewRepository(
         userId: UserId,
         cardId: CardId,
     ): Flow<AppResult<List<ReviewEvent>>> = flowOf(AppResult.Success(emptyList()))
+
+    override fun observeProgress(
+        userId: UserId,
+        timestamp: Timestamp,
+    ): Flow<AppResult<StudyProgress>> = flowOf(AppResult.Success(StudyProgress()))
+
+    override fun observeProgressByDeck(
+        userId: UserId,
+        deckId: DeckId,
+        timestamp: Timestamp,
+    ): Flow<AppResult<StudyProgress>> = flowOf(AppResult.Success(StudyProgress()))
 
     override suspend fun recordReview(
         reviewState: ReviewState,
