@@ -25,6 +25,8 @@ import com.worddeck.common.IdGenerator
 import com.worddeck.common.OperationStatus
 import com.worddeck.domain.model.User
 import com.worddeck.domain.model.Deck
+import com.worddeck.domain.model.CardId
+import com.worddeck.domain.model.ReviewEvent
 import com.worddeck.domain.model.ReviewState
 import com.worddeck.domain.model.startStudySession
 import com.worddeck.domain.repository.DeckRepository
@@ -45,6 +47,7 @@ import com.worddeck.feature.home.HomeViewModel
 import com.worddeck.feature.study.StudyScreen
 import com.worddeck.feature.study.StudyMode
 import com.worddeck.feature.study.ReviewFlashcardUseCase
+import com.worddeck.feature.study.ReviewHistoryScreen
 import com.worddeck.feature.study.StudyUiState
 import com.worddeck.feature.study.StudyViewModel
 
@@ -52,6 +55,7 @@ private const val STUDY_MODE_ARGUMENT = "studyMode"
 
 object AppDestination {
     private const val DECK_ID = "deckId"
+    private const val CARD_ID = "cardId"
 
     const val LOGIN = "auth/login"
     const val REGISTER = "auth/register"
@@ -59,6 +63,7 @@ object AppDestination {
     const val PROFILE = "main/profile"
     const val DECK_DETAILS = "main/decks/{$DECK_ID}"
     const val STUDY_DECK = "main/decks/{$DECK_ID}/study?$STUDY_MODE_ARGUMENT={$STUDY_MODE_ARGUMENT}"
+    const val CARD_HISTORY = "main/cards/{$CARD_ID}/history"
     const val CREATE_DECK = "main/decks/create"
     const val EDIT_DECK = "main/decks/{$DECK_ID}/edit"
 
@@ -70,6 +75,8 @@ object AppDestination {
     ): String = "main/decks/${Uri.encode(deckId)}/study?$STUDY_MODE_ARGUMENT=${mode.name}"
 
     fun editDeck(deckId: String): String = "main/decks/${Uri.encode(deckId)}/edit"
+
+    fun cardHistory(cardId: String): String = "main/cards/${Uri.encode(cardId)}/history"
 }
 
 @Composable
@@ -279,6 +286,9 @@ private fun MainNavigation(
                     onDeleteFlashcard = flashcardViewModel::delete,
                     onClearFlashcardOperation = flashcardViewModel::clearOperation,
                     onFlashcardSearchQueryChange = flashcardViewModel::updateSearchQuery,
+                    onOpenFlashcardHistory = { cardId ->
+                        navController.navigate(AppDestination.cardHistory(cardId.value))
+                    },
                     onBack = { navController.popBackStack() },
                     onStartStudy = {
                         navController.navigate(
@@ -392,6 +402,32 @@ private fun MainNavigation(
                             )
                         }
                     }
+                }
+            }
+        }
+        composable(
+            route = AppDestination.CARD_HISTORY,
+            arguments = listOf(navArgument("cardId") { type = NavType.StringType }),
+        ) { backStackEntry ->
+            val rawCardId = backStackEntry.arguments?.getString("cardId").orEmpty()
+            when (val cardId = CardId.from(rawCardId)) {
+                is AppResult.Failure -> ReviewHistoryScreen(
+                    history = cardId,
+                    onBack = { navController.popBackStack() },
+                )
+                is AppResult.Success -> {
+                    var history by remember(user.id, cardId.value) {
+                        mutableStateOf<AppResult<List<ReviewEvent>>?>(null)
+                    }
+                    LaunchedEffect(user.id, cardId.value, reviewRepository) {
+                        reviewRepository.observeHistory(user.id, cardId.value).collect { result ->
+                            history = result
+                        }
+                    }
+                    ReviewHistoryScreen(
+                        history = history,
+                        onBack = { navController.popBackStack() },
+                    )
                 }
             }
         }

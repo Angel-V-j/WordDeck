@@ -17,6 +17,7 @@ presentation, domain и data слоевете. В момента работят:
 - flashcard study flow с reveal и `Again / Hard / Good / Easy` оценяване;
 - typed-answer режим с точно сравнение след `trim` и игнориране на главни/малки букви;
 - SM-2 обновяване с атомарен Room запис на review state и отделен history event;
+- history по карта и summary при край на учебна сесия;
 - реактивно показване на Room данните чрез `Flow`, включително след restart;
 - адаптивни Compose екрани и автоматизирани unit/Room/Compose тестове.
 
@@ -25,7 +26,7 @@ production зависимостите се създават в manual `AppContai
 умишлено няма:
 
 - Firestore, production Firebase configuration или credentials;
-- history UI или statistics;
+- statistics;
 - synchronization между устройства;
 - dependency injection framework.
 
@@ -56,7 +57,8 @@ app/src/main/java/com/worddeck/
 ├── feature/
 │   ├── auth/
 │   ├── home/               # owner deck list и deck details
-│   └── decks/              # deck/card forms и ViewModel-и
+│   ├── decks/              # deck/card forms и ViewModel-и
+│   └── study/              # study modes, SM-2 review flow и history UI
 ├── navigation/
 │   └── AppNavigation.kt
 ├── ui/
@@ -121,8 +123,8 @@ timestamp отвън и връща следващите repetition, ease factor,
 дата. При всеки review се актуализират success/failure counters и се определя
 `NEW`, `LEARNING`, `MASTERED` или `PROBLEMATIC` ниво. Чиста domain функция
 избира new и due картите за текущ user/deck към подаден timestamp. Reveal/rate
-UI flow-ът работи и пази текущата сесия във ViewModel. Зареждането на review
-states през repository и записването в Room предстоят.
+UI flow-ът работи и пази текущата сесия във ViewModel. Review state и history
+се записват атомарно в Room, а history екранът показва събитията по карта.
 
 ## Локална конфигурация и secrets
 
@@ -142,6 +144,6 @@ code или README.
 
 ## Следващи основни стъпки
 
-1. history изглед и summary при край на учебна сесия;
+1. статистика и прогрес;
 2. минимална Firestore синхронизация върху Room source of truth;
-3. статистики, приемателно тестване и дипломна документация.
+3. приемателно тестване и дипломна документация.

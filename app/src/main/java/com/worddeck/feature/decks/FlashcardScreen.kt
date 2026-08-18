@@ -42,6 +42,7 @@ fun FlashcardSection(
     onDelete: (CardId) -> Unit,
     onClearOperation: () -> Unit,
     onSearchQueryChange: (String) -> Unit,
+    onOpenHistory: (CardId) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var showEditor by rememberSaveable { mutableStateOf(false) }
@@ -71,6 +72,7 @@ fun FlashcardSection(
                 editingFlashcardId = null
                 deleteCandidate = flashcard
             },
+            onOpenHistory = onOpenHistory,
             onDismiss = {
                 showEditor = false
                 editingFlashcardId = null
@@ -197,6 +199,7 @@ private fun FlashcardEditorDialog(
     uiState: FlashcardUiState,
     onSave: (Flashcard?, String, String, String, String) -> Unit,
     onDeleteRequest: (Flashcard) -> Unit,
+    onOpenHistory: (CardId) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var front by rememberSaveable(flashcard?.id?.value) {
@@ -278,6 +281,12 @@ private fun FlashcardEditorDialog(
         dismissButton = {
             Row {
                 if (flashcard != null) {
+                    TextButton(
+                        onClick = { onOpenHistory(flashcard.id) },
+                        enabled = !isWorking,
+                    ) {
+                        Text(stringResource(R.string.review_history_action))
+                    }
                     TextButton(
                         onClick = { onDeleteRequest(flashcard) },
                         enabled = !isWorking,

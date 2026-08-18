@@ -43,6 +43,8 @@ data class StudyUiState(
     val reviewStatus: OperationStatus = OperationStatus.IDLE,
     val error: AppError? = null,
     val ratings: Map<CardId, ReviewRating> = emptyMap(),
+    val correctAnswers: Int = 0,
+    val incorrectAnswers: Int = 0,
 )
 
 class StudyViewModel(
@@ -143,6 +145,10 @@ class StudyViewModel(
         rating: ReviewRating,
     ) {
         val updatedRatings = currentState.ratings + (reviewedCardId to rating)
+        val wasCorrect = currentState.typedAnswerResult == TypedAnswerResult.CORRECT
+        val wasIncorrect = currentState.typedAnswerResult == TypedAnswerResult.INCORRECT
+        val correctAnswers = currentState.correctAnswers + if (wasCorrect) 1 else 0
+        val incorrectAnswers = currentState.incorrectAnswers + if (wasIncorrect) 1 else 0
         currentIndex += 1
 
         if (currentIndex >= cards.size) {
@@ -156,6 +162,8 @@ class StudyViewModel(
                 reviewStatus = OperationStatus.SUCCESS,
                 error = null,
                 ratings = updatedRatings,
+                correctAnswers = correctAnswers,
+                incorrectAnswers = incorrectAnswers,
             )
         } else {
             _uiState.value = currentState.copy(
@@ -168,6 +176,8 @@ class StudyViewModel(
                 reviewStatus = OperationStatus.IDLE,
                 error = null,
                 ratings = updatedRatings,
+                correctAnswers = correctAnswers,
+                incorrectAnswers = incorrectAnswers,
             )
         }
     }

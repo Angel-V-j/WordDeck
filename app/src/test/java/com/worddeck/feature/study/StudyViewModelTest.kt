@@ -79,6 +79,52 @@ class StudyViewModelTest {
     }
 
     @Test
+    fun `completed flashcard session contains review and rating summary`() = runTest {
+        val first = studyCard("card-1", "hello", "hola")
+        val second = studyCard("card-2", "cat", "gato")
+        val viewModel = createViewModel(StudySession(listOf(first, second)))
+
+        viewModel.revealAnswer()
+        viewModel.rate(ReviewRating.GOOD)
+        advanceUntilIdle()
+        viewModel.revealAnswer()
+        viewModel.rate(ReviewRating.AGAIN)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(StudyStage.COMPLETED, state.stage)
+        assertEquals(2, state.ratings.size)
+        assertEquals(1, state.ratings.values.count { it == ReviewRating.GOOD })
+        assertEquals(1, state.ratings.values.count { it == ReviewRating.AGAIN })
+        assertEquals(0, state.correctAnswers)
+        assertEquals(0, state.incorrectAnswers)
+    }
+
+    @Test
+    fun `completed typed session counts correct and incorrect answers`() = runTest {
+        val first = studyCard("card-1", "hello", "hola")
+        val second = studyCard("card-2", "cat", "gato")
+        val viewModel = createViewModel(
+            session = StudySession(listOf(first, second)),
+            mode = StudyMode.TYPED_ANSWER,
+        )
+
+        viewModel.updateTypedAnswer("hola")
+        viewModel.submitTypedAnswer()
+        viewModel.rate(ReviewRating.EASY)
+        advanceUntilIdle()
+        viewModel.updateTypedAnswer("perro")
+        viewModel.submitTypedAnswer()
+        viewModel.rate(ReviewRating.HARD)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(StudyStage.COMPLETED, state.stage)
+        assertEquals(1, state.correctAnswers)
+        assertEquals(1, state.incorrectAnswers)
+    }
+
+    @Test
     fun `rating is ignored until the answer is revealed`() {
         val card = studyCard("card-1", "hello", "hola")
         val viewModel = createViewModel(StudySession(listOf(card)))

@@ -54,15 +54,15 @@ fun StudyScreen(
 
         val currentCard = uiState.currentCard
         if (currentCard == null) {
-            Text(
-                stringResource(
-                    if (uiState.totalCards == 0) {
-                        R.string.no_due_cards
-                    } else {
-                        R.string.study_complete
-                    },
-                ),
-            )
+            if (uiState.totalCards == 0) {
+                Text(stringResource(R.string.no_due_cards))
+            } else {
+                Text(
+                    text = stringResource(R.string.study_complete),
+                    style = MaterialTheme.typography.titleLarge,
+                )
+                SessionSummary(uiState)
+            }
             return@Column
         }
 
@@ -165,6 +165,43 @@ fun StudyScreen(
             RatingButton(R.string.rating_good, ReviewRating.GOOD, ratingEnabled, onRate)
             RatingButton(R.string.rating_easy, ReviewRating.EASY, ratingEnabled, onRate)
         }
+    }
+}
+
+@Composable
+private fun SessionSummary(uiState: StudyUiState) {
+    Text(stringResource(R.string.session_reviews, uiState.ratings.size))
+    Text(
+        stringResource(
+            R.string.session_rating_count,
+            stringResource(R.string.rating_again),
+            uiState.ratings.values.count { it == ReviewRating.AGAIN },
+        ),
+    )
+    Text(
+        stringResource(
+            R.string.session_rating_count,
+            stringResource(R.string.rating_hard),
+            uiState.ratings.values.count { it == ReviewRating.HARD },
+        ),
+    )
+    Text(
+        stringResource(
+            R.string.session_rating_count,
+            stringResource(R.string.rating_good),
+            uiState.ratings.values.count { it == ReviewRating.GOOD },
+        ),
+    )
+    Text(
+        stringResource(
+            R.string.session_rating_count,
+            stringResource(R.string.rating_easy),
+            uiState.ratings.values.count { it == ReviewRating.EASY },
+        ),
+    )
+    if (uiState.mode == StudyMode.TYPED_ANSWER) {
+        Text(stringResource(R.string.session_correct, uiState.correctAnswers))
+        Text(stringResource(R.string.session_incorrect, uiState.incorrectAnswers))
     }
 }
 

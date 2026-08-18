@@ -148,6 +148,7 @@ fun DeckDetailsScreen(
     onClearFlashcardOperation: () -> Unit,
     onFlashcardSearchQueryChange: (String) -> Unit,
     onBack: () -> Unit,
+    onOpenFlashcardHistory: (CardId) -> Unit = {},
     onStartStudy: () -> Unit = {},
     onStartTypedStudy: () -> Unit = {},
     modifier: Modifier = Modifier,
@@ -221,6 +222,7 @@ fun DeckDetailsScreen(
                     onDelete = onDeleteFlashcard,
                     onClearOperation = onClearFlashcardOperation,
                     onSearchQueryChange = onFlashcardSearchQueryChange,
+                    onOpenHistory = onOpenFlashcardHistory,
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight(),
@@ -247,6 +249,7 @@ fun DeckDetailsScreen(
                     onDelete = onDeleteFlashcard,
                     onClearOperation = onClearFlashcardOperation,
                     onSearchQueryChange = onFlashcardSearchQueryChange,
+                    onOpenHistory = onOpenFlashcardHistory,
                     modifier = Modifier.weight(1f),
                 )
             }
