@@ -12,6 +12,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
@@ -23,8 +24,10 @@ import com.worddeck.common.Clock
 import com.worddeck.common.AppResult
 import com.worddeck.common.IdGenerator
 import com.worddeck.common.OperationStatus
+import com.worddeck.R
 import com.worddeck.domain.model.User
 import com.worddeck.domain.model.Deck
+import com.worddeck.domain.model.DeckId
 import com.worddeck.domain.model.CardId
 import com.worddeck.domain.model.ReviewEvent
 import com.worddeck.domain.model.ReviewState
@@ -50,6 +53,9 @@ import com.worddeck.feature.study.ReviewFlashcardUseCase
 import com.worddeck.feature.study.ReviewHistoryScreen
 import com.worddeck.feature.study.StudyUiState
 import com.worddeck.feature.study.StudyViewModel
+import com.worddeck.feature.statistics.StatisticsScreen
+import com.worddeck.feature.statistics.StatisticsUiState
+import com.worddeck.feature.statistics.StatisticsViewModel
 
 private const val STUDY_MODE_ARGUMENT = "studyMode"
 
@@ -61,11 +67,13 @@ object AppDestination {
     const val REGISTER = "auth/register"
     const val HOME = "main/home"
     const val PROFILE = "main/profile"
+    const val STATISTICS = "main/statistics"
     const val DECK_DETAILS = "main/decks/{$DECK_ID}"
     const val STUDY_DECK = "main/decks/{$DECK_ID}/study?$STUDY_MODE_ARGUMENT={$STUDY_MODE_ARGUMENT}"
     const val CARD_HISTORY = "main/cards/{$CARD_ID}/history"
     const val CREATE_DECK = "main/decks/create"
     const val EDIT_DECK = "main/decks/{$DECK_ID}/edit"
+    const val DECK_STATISTICS = "main/decks/{$DECK_ID}/statistics"
 
     fun deckDetails(deckId: String): String = "main/decks/${Uri.encode(deckId)}"
 
@@ -77,6 +85,8 @@ object AppDestination {
     fun editDeck(deckId: String): String = "main/decks/${Uri.encode(deckId)}/edit"
 
     fun cardHistory(cardId: String): String = "main/cards/${Uri.encode(cardId)}/history"
+
+    fun deckStatistics(deckId: String): String = "main/decks/${Uri.encode(deckId)}/statistics"
 }
 
 @Composable
@@ -202,6 +212,7 @@ private fun MainNavigation(
                 },
                 onCreateDeck = { navController.navigate(AppDestination.CREATE_DECK) },
                 onOpenProfile = { navController.navigate(AppDestination.PROFILE) },
+                onOpenStatistics = { navController.navigate(AppDestination.STATISTICS) },
                 onSearchQueryChange = homeViewModel::updateSearchQuery,
                 onCategoryFilterChange = homeViewModel::updateCategoryFilter,
                 onLanguageFilterChange = homeViewModel::updateLanguageFilter,
@@ -215,6 +226,17 @@ private fun MainNavigation(
                 error = uiState.error,
                 onUpdateDisplayName = onUpdateDisplayName,
                 onLogout = onLogout,
+                onBack = { navController.popBackStack() },
+            )
+        }
+        composable(AppDestination.STATISTICS) {
+            StatisticsDestination(
+                key = "statistics-${user.id.value}",
+                title = stringResource(R.string.overall_statistics_title),
+                user = user,
+                deckId = null,
+                reviewRepository = reviewRepository,
+                clock = clock,
                 onBack = { navController.popBackStack() },
             )
         }
@@ -288,6 +310,9 @@ private fun MainNavigation(
                     onFlashcardSearchQueryChange = flashcardViewModel::updateSearchQuery,
                     onOpenFlashcardHistory = { cardId ->
                         navController.navigate(AppDestination.cardHistory(cardId.value))
+                    },
+                    onOpenStatistics = {
+                        navController.navigate(AppDestination.deckStatistics(currentDeck.id.value))
                     },
                     onBack = { navController.popBackStack() },
                     onStartStudy = {
@@ -431,6 +456,41 @@ private fun MainNavigation(
                 }
             }
         }
+        composable(
+            route = AppDestination.DECK_STATISTICS,
+            arguments = listOf(navArgument("deckId") { type = NavType.StringType }),
+        ) { backStackEntry ->
+            val rawDeckId = backStackEntry.arguments?.getString("deckId").orEmpty()
+            when (val deckId = DeckId.from(rawDeckId)) {
+                is AppResult.Failure -> StatisticsScreen(
+                    title = stringResource(R.string.deck_statistics_fallback_title),
+                    uiState = StatisticsUiState(
+                        status = OperationStatus.ERROR,
+                        error = deckId.error,
+                    ),
+                    onBack = { navController.popBackStack() },
+                )
+                is AppResult.Success -> {
+                    val deckTitle = homeUiState.decks
+                        .firstOrNull { it.id == deckId.value }
+                        ?.title
+                        ?.value
+                    StatisticsDestination(
+                        key = "statistics-${user.id.value}-${deckId.value.value}",
+                        title = if (deckTitle == null) {
+                            stringResource(R.string.deck_statistics_fallback_title)
+                        } else {
+                            stringResource(R.string.deck_statistics_title, deckTitle)
+                        },
+                        user = user,
+                        deckId = deckId.value,
+                        reviewRepository = reviewRepository,
+                        clock = clock,
+                        onBack = { navController.popBackStack() },
+                    )
+                }
+            }
+        }
         composable(AppDestination.CREATE_DECK) {
             DeckEditorDestination(
                 key = "create-${user.id.value}",
@@ -507,6 +567,32 @@ private fun DeckEditorDestination(
         uiState = editorState,
         onSave = editorViewModel::save,
         onSaved = onBack,
+        onBack = onBack,
+    )
+}
+
+@Composable
+private fun StatisticsDestination(
+    key: String,
+    title: String,
+    user: User,
+    deckId: DeckId?,
+    reviewRepository: ReviewRepository,
+    clock: Clock,
+    onBack: () -> Unit,
+) {
+    val statisticsViewModel = viewModel<StatisticsViewModel>(key = key) {
+        StatisticsViewModel(
+            reviewRepository = reviewRepository,
+            userId = user.id,
+            clock = clock,
+            deckId = deckId,
+        )
+    }
+    val statisticsState by statisticsViewModel.uiState.collectAsStateWithLifecycle()
+    StatisticsScreen(
+        title = title,
+        uiState = statisticsState,
         onBack = onBack,
     )
 }

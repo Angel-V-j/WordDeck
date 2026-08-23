@@ -18,7 +18,7 @@ presentation, domain и data слоевете. В момента работят:
 - typed-answer режим с точно сравнение след `trim` и игнориране на главни/малки букви;
 - SM-2 обновяване с атомарен Room запис на review state и отделен history event;
 - history по карта и summary при край на учебна сесия;
-- реактивни общи и deck-scoped counts за mastery нивата и due картите;
+- общ и deck-scoped statistics UI с mastery/due counts и Material 3 progress indicators;
 - реактивно показване на Room данните чрез `Flow`, включително след restart;
 - адаптивни Compose екрани и автоматизирани unit/Room/Compose тестове.
 
@@ -27,7 +27,6 @@ production зависимостите се създават в manual `AppContai
 умишлено няма:
 
 - Firestore, production Firebase configuration или credentials;
-- statistics;
 - synchronization между устройства;
 - dependency injection framework.
 
@@ -59,7 +58,8 @@ app/src/main/java/com/worddeck/
 │   ├── auth/
 │   ├── home/               # owner deck list и deck details
 │   ├── decks/              # deck/card forms и ViewModel-и
-│   └── study/              # study modes, SM-2 review flow и history UI
+│   ├── study/              # study modes, SM-2 review flow и history UI
+│   └── statistics/         # общ и deck-scoped progress UI
 ├── navigation/
 │   └── AppNavigation.kt
 ├── ui/
@@ -145,6 +145,6 @@ code или README.
 
 ## Следващи основни стъпки
 
-1. статистика и прогрес;
+1. статистика за активността по периоди;
 2. минимална Firestore синхронизация върху Room source of truth;
 3. приемателно тестване и дипломна документация.

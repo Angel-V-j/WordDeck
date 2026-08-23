@@ -49,6 +49,7 @@ fun HomeScreen(
     onSearchQueryChange: (String) -> Unit,
     onCategoryFilterChange: (String) -> Unit,
     onLanguageFilterChange: (String) -> Unit,
+    onOpenStatistics: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -72,6 +73,9 @@ fun HomeScreen(
                 }
                 TextButton(onClick = onOpenProfile) {
                     Text(stringResource(R.string.profile_title))
+                }
+                TextButton(onClick = onOpenStatistics) {
+                    Text(stringResource(R.string.statistics_action))
                 }
             }
         }
@@ -148,6 +152,7 @@ fun DeckDetailsScreen(
     onClearFlashcardOperation: () -> Unit,
     onFlashcardSearchQueryChange: (String) -> Unit,
     onBack: () -> Unit,
+    onOpenStatistics: () -> Unit = {},
     onOpenFlashcardHistory: (CardId) -> Unit = {},
     onStartStudy: () -> Unit = {},
     onStartTypedStudy: () -> Unit = {},
@@ -211,6 +216,7 @@ fun DeckDetailsScreen(
                     onBack = onBack,
                     onStartStudy = onStartStudy,
                     onStartTypedStudy = onStartTypedStudy,
+                    onOpenStatistics = onOpenStatistics,
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
@@ -242,6 +248,7 @@ fun DeckDetailsScreen(
                     onBack = onBack,
                     onStartStudy = onStartStudy,
                     onStartTypedStudy = onStartTypedStudy,
+                    onOpenStatistics = onOpenStatistics,
                 )
                 FlashcardSection(
                     uiState = flashcardUiState,
@@ -267,6 +274,7 @@ private fun DeckSummary(
     onBack: () -> Unit,
     onStartStudy: () -> Unit,
     onStartTypedStudy: () -> Unit,
+    onOpenStatistics: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -293,6 +301,12 @@ private fun DeckSummary(
             enabled = !isDeleting,
         ) {
             Text(stringResource(R.string.start_typed_study_action))
+        }
+        TextButton(
+            onClick = onOpenStatistics,
+            enabled = !isDeleting,
+        ) {
+            Text(stringResource(R.string.deck_statistics_action))
         }
         Row {
             TextButton(onClick = onEdit, enabled = !isDeleting) {
