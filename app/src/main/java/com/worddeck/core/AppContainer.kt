@@ -2,6 +2,7 @@ package com.worddeck.core
 
 import android.content.Context
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import com.worddeck.common.Clock
 import com.worddeck.common.IdGenerator
 import com.worddeck.common.SystemClock
@@ -10,6 +11,7 @@ import com.worddeck.data.remote.firebase.FirebaseAuthRepository
 import com.worddeck.data.repository.LocalDeckRepository
 import com.worddeck.data.repository.LocalFlashcardRepository
 import com.worddeck.data.repository.LocalReviewRepository
+import com.worddeck.data.sync.SyncCoordinator
 import com.worddeck.domain.repository.AuthenticationRepository
 import com.worddeck.domain.repository.DeckRepository
 import com.worddeck.domain.repository.FlashcardRepository
@@ -27,6 +29,7 @@ class AppContainer(
     val deckRepository: DeckRepository,
     val flashcardRepository: FlashcardRepository,
     val reviewRepository: ReviewRepository,
+    val syncCoordinator: SyncCoordinator,
     val idGenerator: IdGenerator = IdGenerator { UUID.randomUUID().toString() },
     val clock: Clock = SystemClock,
 ) {
@@ -38,6 +41,7 @@ class AppContainer(
         deckRepository = LocalDeckRepository(database.deckDao()),
         flashcardRepository = LocalFlashcardRepository(database.flashcardDao()),
         reviewRepository = LocalReviewRepository(database),
+        syncCoordinator = SyncCoordinator.create(database, FirebaseFirestore.getInstance()),
     )
 
     companion object {

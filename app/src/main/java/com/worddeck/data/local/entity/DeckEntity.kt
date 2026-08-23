@@ -18,4 +18,6 @@ data class DeckEntity(
     val visibility: String,
     val createdAt: Long,
     val updatedAt: Long,
+    val pendingSync: Boolean = true,
+    val deletedAt: Long? = null,
 )

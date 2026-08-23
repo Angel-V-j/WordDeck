@@ -4,27 +4,14 @@ import com.worddeck.common.AppError
 import com.worddeck.common.AppResult
 import com.worddeck.common.OperationStatus
 import com.worddeck.common.Timestamp
-import com.worddeck.core.AppContainer
 import com.worddeck.domain.model.Deck
 import com.worddeck.domain.model.DeckCategory
 import com.worddeck.domain.model.DeckId
 import com.worddeck.domain.model.DeckLanguage
 import com.worddeck.domain.model.DeckTitle
 import com.worddeck.domain.model.DeckVisibility
-import com.worddeck.domain.model.CardId
-import com.worddeck.domain.model.Flashcard
-import com.worddeck.domain.model.ReviewEvent
-import com.worddeck.domain.model.ReviewActivity
-import com.worddeck.domain.model.ReviewState
-import com.worddeck.domain.model.StudyProgress
-import com.worddeck.domain.model.DisplayName
-import com.worddeck.domain.model.EmailAddress
-import com.worddeck.domain.model.User
 import com.worddeck.domain.model.UserId
-import com.worddeck.domain.repository.AuthenticationRepository
 import com.worddeck.domain.repository.DeckRepository
-import com.worddeck.domain.repository.FlashcardRepository
-import com.worddeck.domain.repository.ReviewRepository
 import com.worddeck.testing.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -57,14 +44,8 @@ class HomeViewModelTest {
     fun `requests the owner scoped flow and exposes its content`() = runTest {
         val decks = listOf(createDeck())
         val repository = FakeDeckRepository(AppResult.Success(decks))
-        val appContainer = AppContainer(
-            authenticationRepository = UnusedAuthenticationRepository,
-            deckRepository = repository,
-            flashcardRepository = UnusedFlashcardRepository,
-            reviewRepository = UnusedReviewRepository,
-        )
         val viewModel = HomeViewModel(
-            deckRepository = appContainer.deckRepository,
+            deckRepository = repository,
             ownerId = userId(),
         )
 
@@ -255,65 +236,6 @@ private fun createDeck(
 private fun userId(): UserId = UserId.from("user-1").successValue()
 
 private fun <T> AppResult<T>.successValue(): T = (this as AppResult.Success).value
-
-private object UnusedAuthenticationRepository : AuthenticationRepository {
-    override fun observeCurrentUser(): Flow<AppResult<User?>> = unusedDependency()
-
-    override suspend fun register(
-        displayName: DisplayName,
-        email: EmailAddress,
-        password: String,
-    ): AppResult<User> = unusedDependency()
-
-    override suspend fun login(email: EmailAddress, password: String): AppResult<User> =
-        unusedDependency()
-
-    override suspend fun updateDisplayName(displayName: DisplayName): AppResult<User> =
-        unusedDependency()
-
-    override suspend fun logout(): AppResult<Unit> = unusedDependency()
-}
-
-private object UnusedFlashcardRepository : FlashcardRepository {
-    override fun observeByDeck(deckId: DeckId): Flow<AppResult<List<Flashcard>>> = unusedDependency()
-
-    override suspend fun save(flashcard: Flashcard): AppResult<Unit> = unusedDependency()
-
-    override suspend fun delete(id: CardId): AppResult<Unit> = unusedDependency()
-}
-
-private object UnusedReviewRepository : ReviewRepository {
-    override fun observeStates(userId: UserId): Flow<AppResult<List<ReviewState>>> =
-        unusedDependency()
-
-    override fun observeHistory(
-        userId: UserId,
-        cardId: CardId,
-    ): Flow<AppResult<List<ReviewEvent>>> = unusedDependency()
-
-    override fun observeProgress(
-        userId: UserId,
-        timestamp: Timestamp,
-    ): Flow<AppResult<StudyProgress>> = unusedDependency()
-
-    override fun observeProgressByDeck(
-        userId: UserId,
-        deckId: DeckId,
-        timestamp: Timestamp,
-    ): Flow<AppResult<StudyProgress>> = unusedDependency()
-
-    override fun observeActivity(
-        userId: UserId,
-        timestamp: Timestamp,
-    ): Flow<AppResult<ReviewActivity>> = unusedDependency()
-
-    override suspend fun recordReview(
-        reviewState: ReviewState,
-        reviewEvent: ReviewEvent,
-    ): AppResult<Unit> = unusedDependency()
-}
-
-private fun unusedDependency(): Nothing = error("This dependency is not used by HomeViewModel")
 
 private class FakeDeckRepository(
     observedResult: AppResult<List<Deck>>,

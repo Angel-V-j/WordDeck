@@ -12,7 +12,10 @@ import com.worddeck.domain.model.DeckTitle
 import com.worddeck.domain.model.DeckVisibility
 import com.worddeck.domain.model.UserId
 
-internal fun Deck.toEntity(): DeckEntity = DeckEntity(
+internal fun Deck.toEntity(
+    pendingSync: Boolean = true,
+    deletedAt: Long? = null,
+): DeckEntity = DeckEntity(
     id = id.value,
     ownerId = ownerId.value,
     title = title.value,
@@ -22,6 +25,8 @@ internal fun Deck.toEntity(): DeckEntity = DeckEntity(
     visibility = visibility.name,
     createdAt = createdAt.epochMilliseconds,
     updatedAt = updatedAt.epochMilliseconds,
+    pendingSync = pendingSync,
+    deletedAt = deletedAt,
 )
 
 internal fun DeckEntity.toDomain(): AppResult<Deck> {

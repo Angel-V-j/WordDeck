@@ -50,5 +50,6 @@ Keep the Auth Emulator running, start an Android emulator and execute:
 `FirebaseAuthRepositoryTest` exercises registration, login, logout, profile
 display-name updates and session observation. `FirestoreSecurityRulesTest`
 verifies owner access and rejects foreign or unauthenticated access for every
-synchronized collection. Both tests use emulator-only users and never target
-production data.
+synchronized collection. `SyncCoordinatorFirestoreTest` verifies one complete
+Room → Firestore → second Room transfer. These tests use emulator-only users
+and never target production data.

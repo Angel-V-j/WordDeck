@@ -29,4 +29,6 @@ data class ReviewStateEntity(
     val successfulReviewCount: Int,
     val failedReviewCount: Int,
     val masteryLevel: String,
+    val updatedAt: Long = lastReviewedAt ?: nextReviewAt,
+    val pendingSync: Boolean = true,
 )

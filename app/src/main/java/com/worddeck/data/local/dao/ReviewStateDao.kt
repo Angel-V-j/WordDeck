@@ -25,6 +25,24 @@ interface ReviewStateDao {
     @Query(
         """
         SELECT * FROM review_states
+        WHERE userId = :userId AND pendingSync = 1
+        """,
+    )
+    suspend fun findPendingByUser(userId: String): List<ReviewStateEntity>
+
+    @Query(
+        """
+        UPDATE review_states SET pendingSync = 0
+        WHERE userId = :userId
+          AND cardId = :cardId
+          AND updatedAt = :updatedAt
+        """,
+    )
+    suspend fun markSynced(userId: String, cardId: String, updatedAt: Long): Int
+
+    @Query(
+        """
+        SELECT * FROM review_states
         WHERE userId = :userId
         ORDER BY cardId
         """,
@@ -47,6 +65,8 @@ interface ReviewStateDao {
           ON review_states.cardId = flashcards.id
          AND review_states.userId = :userId
         WHERE decks.ownerId = :userId
+          AND decks.deletedAt IS NULL
+          AND flashcards.deletedAt IS NULL
         """,
     )
     fun observeProgress(userId: String, timestamp: Long): Flow<StudyProgress>
@@ -66,6 +86,7 @@ interface ReviewStateDao {
           ON review_states.cardId = flashcards.id
          AND review_states.userId = :userId
         WHERE flashcards.deckId = :deckId
+          AND flashcards.deletedAt IS NULL
         """,
     )
     fun observeProgressByDeck(

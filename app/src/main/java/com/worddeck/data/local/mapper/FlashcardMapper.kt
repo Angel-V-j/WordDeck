@@ -8,7 +8,10 @@ import com.worddeck.domain.model.CardSide
 import com.worddeck.domain.model.DeckId
 import com.worddeck.domain.model.Flashcard
 
-internal fun Flashcard.toEntity(): FlashcardEntity = FlashcardEntity(
+internal fun Flashcard.toEntity(
+    pendingSync: Boolean = true,
+    deletedAt: Long? = null,
+): FlashcardEntity = FlashcardEntity(
     id = id.value,
     deckId = deckId.value,
     front = front.value,
@@ -17,6 +20,8 @@ internal fun Flashcard.toEntity(): FlashcardEntity = FlashcardEntity(
     additionalInformation = additionalInformation,
     createdAt = createdAt.epochMilliseconds,
     updatedAt = updatedAt.epochMilliseconds,
+    pendingSync = pendingSync,
+    deletedAt = deletedAt,
 )
 
 internal fun FlashcardEntity.toDomain(): AppResult<Flashcard> {

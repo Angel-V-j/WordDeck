@@ -17,10 +17,25 @@ interface DeckDao {
     @Query("SELECT * FROM decks WHERE id = :id LIMIT 1")
     suspend fun findById(id: String): DeckEntity?
 
+    @Query("SELECT * FROM decks WHERE ownerId = :ownerId AND pendingSync = 1")
+    suspend fun findPendingByOwner(ownerId: String): List<DeckEntity>
+
+    @Query("SELECT id FROM decks WHERE ownerId = :ownerId AND deletedAt IS NULL")
+    suspend fun findActiveIdsByOwner(ownerId: String): List<String>
+
+    @Query(
+        """
+        UPDATE decks SET pendingSync = 0
+        WHERE id = :id AND updatedAt = :updatedAt
+        """,
+    )
+    suspend fun markSynced(id: String, updatedAt: Long): Int
+
     @Query(
         """
         SELECT * FROM decks
         WHERE ownerId = :ownerId
+          AND deletedAt IS NULL
         ORDER BY updatedAt DESC, id
         """,
     )

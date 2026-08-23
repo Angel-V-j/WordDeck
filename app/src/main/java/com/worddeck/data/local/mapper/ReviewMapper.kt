@@ -13,7 +13,10 @@ import com.worddeck.domain.model.ReviewState
 import com.worddeck.domain.model.Sm2Quality
 import com.worddeck.domain.model.UserId
 
-internal fun ReviewState.toEntity(): ReviewStateEntity = ReviewStateEntity(
+internal fun ReviewState.toEntity(
+    updatedAt: Long = lastReviewedAt?.epochMilliseconds ?: nextReviewAt.epochMilliseconds,
+    pendingSync: Boolean = true,
+): ReviewStateEntity = ReviewStateEntity(
     userId = userId.value,
     cardId = cardId.value,
     repetition = repetition,
@@ -25,6 +28,8 @@ internal fun ReviewState.toEntity(): ReviewStateEntity = ReviewStateEntity(
     successfulReviewCount = successfulReviewCount,
     failedReviewCount = failedReviewCount,
     masteryLevel = masteryLevel.name,
+    updatedAt = updatedAt,
+    pendingSync = pendingSync,
 )
 
 internal fun ReviewStateEntity.toDomain(): AppResult<ReviewState> {
@@ -57,12 +62,13 @@ internal fun ReviewStateEntity.toDomain(): AppResult<ReviewState> {
     )
 }
 
-internal fun ReviewEvent.toEntity(): ReviewEventEntity = ReviewEventEntity(
+internal fun ReviewEvent.toEntity(pendingSync: Boolean = true): ReviewEventEntity = ReviewEventEntity(
     id = id.value,
     userId = userId.value,
     cardId = cardId.value,
     quality = quality.value,
     reviewedAt = reviewedAt.epochMilliseconds,
+    pendingSync = pendingSync,
 )
 
 internal fun ReviewEventEntity.toDomain(): AppResult<ReviewEvent> {

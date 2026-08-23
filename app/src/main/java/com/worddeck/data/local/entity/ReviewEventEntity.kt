@@ -26,4 +26,5 @@ data class ReviewEventEntity(
     val cardId: String,
     val quality: Int,
     val reviewedAt: Long,
+    val pendingSync: Boolean = true,
 )

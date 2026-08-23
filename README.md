@@ -21,14 +21,15 @@ presentation, domain и data слоевете. В момента работят:
 - общ и deck-scoped statistics UI с mastery/due counts и Material 3 progress indicators;
 - обща review активност за последните 7 дни, 30 дни и целия период;
 - реактивно показване на Room данните чрез `Flow`, включително след restart;
+- ръчно извикваем Room-first `SyncCoordinator` за Firestore upload/download;
 - адаптивни Compose екрани и автоматизирани unit/Room/Compose тестове.
 
 Firebase Authentication и Room са скрити зад малки repository interfaces, а
 production зависимостите се създават в manual `AppContainer`. На този етап
 умишлено няма:
 
-- работеща Firestore синхронизация, production Firebase configuration или credentials;
-- synchronization между устройства;
+- автоматичен sync trigger, background retry и delete recovery;
+- production Firebase configuration или credentials;
 - dependency injection framework.
 
 ## Структура
@@ -46,8 +47,10 @@ app/src/main/java/com/worddeck/
 │   │   └── mapper/
 │   ├── remote/
 │   │   └── firebase/
-│   │       └── Firebase Auth adapter и Firestore DTO/mapper-и
-│   └── repository/
+│   │       └── Firebase Auth и Firestore remote adapter-и
+│   ├── repository/
+│   └── sync/
+│       └── един SyncCoordinator
 ├── domain/
 │   ├── model/
 │   │   └── User, Deck, Flashcard и review модели/value classes
@@ -83,8 +86,10 @@ app/src/main/java/com/worddeck/
   използва. Те не знаят за Room или Firebase.
 - `data/local/` съдържа текущия Room source of truth.
 - `data/remote/firebase/` съдържа Firebase Authentication adapter-а и
-  primitive-only Firestore DTO/mapper-и. Sync coordinator още няма.
+  primitive-only Firestore DTO/mapper-и и concrete remote sync adapter.
 - `data/repository/` съдържа тънките Room repository implementations.
+- `data/sync/` съдържа единствения upload/download coordinator. UI продължава
+  да чете само Room.
 - `common/` съдържа само малки общи типове; `core/` съдържа composition root-а.
 - `navigation/` съдържа централния Navigation Compose graph.
 - `ui/` съдържа Material 3 theme и малък брой reusable UI components.
@@ -148,5 +153,5 @@ code или README.
 
 ## Следващи основни стъпки
 
-1. един минимален SyncCoordinator върху Room source of truth;
-2. приемателно тестване и дипломна документация.
+1. tombstone delete, retry и network recovery върху текущия coordinator;
+2. multi-device приемателно тестване и дипломна документация.

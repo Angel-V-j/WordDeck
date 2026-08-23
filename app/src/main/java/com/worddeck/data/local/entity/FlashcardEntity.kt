@@ -26,4 +26,6 @@ data class FlashcardEntity(
     val additionalInformation: String?,
     val createdAt: Long,
     val updatedAt: Long,
+    val pendingSync: Boolean = true,
+    val deletedAt: Long? = null,
 )
