@@ -15,7 +15,7 @@ data class StudySession(
  * Selects the cards that can be studied now without accessing Room or system time.
  *
  * A missing review state means that the card is new. Its initial state stays in
- * memory until the user completes a review in a later task.
+ * memory until the user completes and saves the first review.
  */
 fun startStudySession(
     userId: UserId,

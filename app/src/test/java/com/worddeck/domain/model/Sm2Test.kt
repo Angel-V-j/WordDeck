@@ -24,7 +24,7 @@ class Sm2Test {
 
     @Test
     fun `initial input uses the documented SM-2 defaults`() {
-        val input = Sm2Input.initial(Sm2Quality.FOUR)
+        val input = initialInput(Sm2Quality.FOUR)
 
         assertEquals(0, input.repetition)
         assertEquals(2.5, input.easeFactor, 0.0)
@@ -38,7 +38,7 @@ class Sm2Test {
     fun `successful reviews use one six and rounded multiplied intervals`() {
         val fixedClock = Clock { REVIEWED_AT }
         val first = Sm2Scheduler.review(
-            Sm2Input.initial(Sm2Quality.FOUR),
+            initialInput(Sm2Quality.FOUR),
             fixedClock.now(),
         )
         val second = Sm2Scheduler.review(
@@ -135,5 +135,14 @@ private val REVIEWED_AT = Timestamp(
 )
 private const val DAY = 86_400_000L
 private const val DOUBLE_TOLERANCE = 0.000000001
+
+private fun initialInput(quality: Sm2Quality): Sm2Input = Sm2Input(
+    repetition = Sm2Rules.INITIAL_REPETITION,
+    easeFactor = Sm2Rules.INITIAL_EASE_FACTOR,
+    intervalDays = Sm2Rules.INITIAL_INTERVAL_DAYS,
+    successfulReviewCount = 0,
+    failedReviewCount = 0,
+    quality = quality,
+)
 
 private fun <T> AppResult<T>.successValue(): T = (this as AppResult.Success).value

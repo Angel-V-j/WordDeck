@@ -255,18 +255,7 @@ private fun MainNavigation(
             if (currentDeck == null && homeUiState.status == OperationStatus.LOADING) {
                 LoadingScreen(Modifier)
             } else if (currentDeck == null) {
-                DeckDetailsScreen(
-                    deck = null,
-                    uiState = DeckUiState(),
-                    flashcardUiState = FlashcardUiState(),
-                    onEdit = {},
-                    onDelete = {},
-                    onSaveFlashcard = { _, _, _, _, _ -> },
-                    onDeleteFlashcard = {},
-                    onClearFlashcardOperation = {},
-                    onFlashcardSearchQueryChange = {},
-                    onBack = { navController.popBackStack() },
-                )
+                MissingDeckDestination(onBack = { navController.popBackStack() })
             } else {
                 val detailsViewModel = viewModel<DeckViewModel>(
                     key = "details-${currentDeck.id.value}",
@@ -346,14 +335,7 @@ private fun MainNavigation(
             val currentDeck = homeUiState.decks.firstOrNull { it.id.value == selectedId }
 
             if (currentDeck == null) {
-                StudyScreen(
-                    uiState = StudyUiState(),
-                    onRevealAnswer = {},
-                    onTypedAnswerChange = {},
-                    onSubmitTypedAnswer = {},
-                    onRate = {},
-                    onBack = { navController.popBackStack() },
-                )
+                EmptyStudyDestination(onBack = { navController.popBackStack() })
             } else {
                 val flashcardViewModel = viewModel<FlashcardViewModel>(
                     key = "study-cards-${currentDeck.id.value}",
@@ -371,22 +353,12 @@ private fun MainNavigation(
                     OperationStatus.IDLE,
                     OperationStatus.LOADING,
                     -> LoadingScreen(Modifier)
-                    OperationStatus.ERROR -> StudyScreen(
-                        uiState = StudyUiState(),
-                        onRevealAnswer = {},
-                        onTypedAnswerChange = {},
-                        onSubmitTypedAnswer = {},
-                        onRate = {},
+                    OperationStatus.ERROR -> EmptyStudyDestination(
                         onBack = { navController.popBackStack() },
                     )
                     OperationStatus.SUCCESS -> when (val states = reviewStatesResult) {
                         null -> LoadingScreen(Modifier)
-                        is AppResult.Failure -> StudyScreen(
-                            uiState = StudyUiState(),
-                            onRevealAnswer = {},
-                            onTypedAnswerChange = {},
-                            onSubmitTypedAnswer = {},
-                            onRate = {},
+                        is AppResult.Failure -> EmptyStudyDestination(
                             onBack = { navController.popBackStack() },
                         )
                         is AppResult.Success -> {
@@ -516,18 +488,7 @@ private fun MainNavigation(
             if (currentDeck == null && homeUiState.status == OperationStatus.LOADING) {
                 LoadingScreen(Modifier)
             } else if (currentDeck == null) {
-                DeckDetailsScreen(
-                    deck = null,
-                    uiState = DeckUiState(),
-                    flashcardUiState = FlashcardUiState(),
-                    onEdit = {},
-                    onDelete = {},
-                    onSaveFlashcard = { _, _, _, _, _ -> },
-                    onDeleteFlashcard = {},
-                    onClearFlashcardOperation = {},
-                    onFlashcardSearchQueryChange = {},
-                    onBack = { navController.popBackStack() },
-                )
+                MissingDeckDestination(onBack = { navController.popBackStack() })
             } else {
                 DeckEditorDestination(
                     key = "edit-${currentDeck.id.value}",
@@ -593,6 +554,34 @@ private fun StatisticsDestination(
     StatisticsScreen(
         title = title,
         uiState = statisticsState,
+        onBack = onBack,
+    )
+}
+
+@Composable
+private fun MissingDeckDestination(onBack: () -> Unit) {
+    DeckDetailsScreen(
+        deck = null,
+        uiState = DeckUiState(),
+        flashcardUiState = FlashcardUiState(),
+        onEdit = {},
+        onDelete = {},
+        onSaveFlashcard = { _, _, _, _, _ -> },
+        onDeleteFlashcard = {},
+        onClearFlashcardOperation = {},
+        onFlashcardSearchQueryChange = {},
+        onBack = onBack,
+    )
+}
+
+@Composable
+private fun EmptyStudyDestination(onBack: () -> Unit) {
+    StudyScreen(
+        uiState = StudyUiState(),
+        onRevealAnswer = {},
+        onTypedAnswerChange = {},
+        onSubmitTypedAnswer = {},
+        onRate = {},
         onBack = onBack,
     )
 }

@@ -42,8 +42,8 @@ fun FlashcardSection(
     onDelete: (CardId) -> Unit,
     onClearOperation: () -> Unit,
     onSearchQueryChange: (String) -> Unit,
-    onOpenHistory: (CardId) -> Unit = {},
     modifier: Modifier = Modifier,
+    onOpenHistory: (CardId) -> Unit = {},
 ) {
     var showEditor by rememberSaveable { mutableStateOf(false) }
     var editingFlashcardId by rememberSaveable { mutableStateOf<String?>(null) }

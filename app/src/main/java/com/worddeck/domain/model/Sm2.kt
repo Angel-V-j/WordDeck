@@ -51,18 +51,7 @@ data class Sm2Input(
     val successfulReviewCount: Int,
     val failedReviewCount: Int,
     val quality: Sm2Quality,
-) {
-    companion object {
-        fun initial(quality: Sm2Quality): Sm2Input = Sm2Input(
-            repetition = Sm2Rules.INITIAL_REPETITION,
-            easeFactor = Sm2Rules.INITIAL_EASE_FACTOR,
-            intervalDays = Sm2Rules.INITIAL_INTERVAL_DAYS,
-            successfulReviewCount = 0,
-            failedReviewCount = 0,
-            quality = quality,
-        )
-    }
-}
+)
 
 /** Updated algorithm values returned after reviewing one card. */
 data class Sm2Result(
@@ -126,7 +115,7 @@ object Sm2Scheduler {
         val shouldReset = Sm2Rules.shouldReset(input.quality)
 
         val newRepetition = if (shouldReset) {
-            Sm2Rules.INITIAL_REPETITION // 0
+            Sm2Rules.INITIAL_REPETITION
         } else {
             input.repetition + 1
         }

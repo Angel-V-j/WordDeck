@@ -27,7 +27,7 @@ value class EmailAddress private constructor(val value: String) {
 value class DisplayName private constructor(val value: String) {
     companion object {
         fun from(raw: String): AppResult<DisplayName> =
-            TextValueValidator.validate(raw, "display name") { DisplayName(it) }
+            validateRequiredText(raw, "display name") { DisplayName(it) }
     }
 }
 
@@ -35,7 +35,7 @@ value class DisplayName private constructor(val value: String) {
 value class DeckTitle private constructor(val value: String) {
     companion object {
         fun from(raw: String): AppResult<DeckTitle> =
-            TextValueValidator.validate(raw, "deck title") { DeckTitle(it) }
+            validateRequiredText(raw, "deck title") { DeckTitle(it) }
     }
 }
 
@@ -43,7 +43,7 @@ value class DeckTitle private constructor(val value: String) {
 value class DeckLanguage private constructor(val value: String) {
     companion object {
         fun from(raw: String?): DeckLanguage? =
-            TextValueValidator.normalizeOptional(raw) { DeckLanguage(it) }
+            normalizeOptionalText(raw) { DeckLanguage(it) }
     }
 }
 
@@ -51,7 +51,7 @@ value class DeckLanguage private constructor(val value: String) {
 value class DeckCategory private constructor(val value: String) {
     companion object {
         fun from(raw: String?): DeckCategory? =
-            TextValueValidator.normalizeOptional(raw) { DeckCategory(it) }
+            normalizeOptionalText(raw) { DeckCategory(it) }
     }
 }
 
@@ -59,6 +59,27 @@ value class DeckCategory private constructor(val value: String) {
 value class CardSide private constructor(val value: String) {
     companion object {
         fun from(raw: String): AppResult<CardSide> =
-            TextValueValidator.validate(raw, "card side") { CardSide(it) }
+            validateRequiredText(raw, "card side") { CardSide(it) }
     }
+}
+
+private fun <T> validateRequiredText(
+    raw: String,
+    field: String,
+    create: (String) -> T,
+): AppResult<T> {
+    val normalized = raw.trim()
+    return if (normalized.isEmpty()) {
+        AppResult.Failure(AppError.Validation(field, "must not be blank"))
+    } else {
+        AppResult.Success(create(normalized))
+    }
+}
+
+private fun <T> normalizeOptionalText(
+    raw: String?,
+    create: (String) -> T,
+): T? {
+    val normalized = raw?.trim().orEmpty()
+    return if (normalized.isEmpty()) null else create(normalized)
 }

@@ -59,7 +59,8 @@ app/src/main/java/com/worddeck/
 │   └── repository/
 │       ├── AuthenticationRepository.kt
 │       ├── DeckRepository.kt
-│       └── FlashcardRepository.kt
+│       ├── FlashcardRepository.kt
+│       └── ReviewRepository.kt
 ├── feature/
 │   ├── auth/
 │   ├── home/               # owner deck list и deck details
@@ -94,7 +95,7 @@ app/src/main/java/com/worddeck/
   network-constrained one-time worker. UI продължава да чете само Room.
 - `common/` съдържа само малки общи типове; `core/` съдържа composition root-а.
 - `navigation/` съдържа централния Navigation Compose graph.
-- `ui/` съдържа Material 3 theme и малък брой reusable UI components.
+- `ui/` съдържа Material 3 theme.
 
 ## Посока на зависимостите
 

@@ -34,30 +34,30 @@ class AppContainer(
     val idGenerator: IdGenerator = IdGenerator { UUID.randomUUID().toString() },
     val clock: Clock = SystemClock,
 ) {
-    constructor(
-        database: WordDeckDatabase,
-        authenticationRepository: AuthenticationRepository,
-        clock: Clock = SystemClock,
-        onLocalChange: () -> Unit = {},
-    ) : this(
-        authenticationRepository = authenticationRepository,
-        deckRepository = LocalDeckRepository(database.deckDao(), clock, onLocalChange),
-        flashcardRepository = LocalFlashcardRepository(database.flashcardDao(), clock, onLocalChange),
-        reviewRepository = LocalReviewRepository(database, onLocalChange),
-        syncCoordinator = SyncCoordinator.create(database, FirebaseFirestore.getInstance()),
-        clock = clock,
-    )
-
     companion object {
         fun create(context: Context): AppContainer {
+            val database = WordDeckDatabase.create(context)
             val requestSync = { SyncWorkScheduler.enqueue(context) }
             return AppContainer(
-                database = WordDeckDatabase.create(context),
                 authenticationRepository = FirebaseAuthRepository(
                     FirebaseAuth.getInstance(),
                     requestSync,
                 ),
-                onLocalChange = requestSync,
+                deckRepository = LocalDeckRepository(
+                    database.deckDao(),
+                    SystemClock,
+                    requestSync,
+                ),
+                flashcardRepository = LocalFlashcardRepository(
+                    database.flashcardDao(),
+                    SystemClock,
+                    requestSync,
+                ),
+                reviewRepository = LocalReviewRepository(database, requestSync),
+                syncCoordinator = SyncCoordinator.create(
+                    database,
+                    FirebaseFirestore.getInstance(),
+                ),
             )
         }
     }

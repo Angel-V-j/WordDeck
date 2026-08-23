@@ -49,8 +49,8 @@ fun HomeScreen(
     onSearchQueryChange: (String) -> Unit,
     onCategoryFilterChange: (String) -> Unit,
     onLanguageFilterChange: (String) -> Unit,
-    onOpenStatistics: () -> Unit = {},
     modifier: Modifier = Modifier,
+    onOpenStatistics: () -> Unit = {},
 ) {
     LazyColumn(
         modifier = modifier
@@ -152,11 +152,11 @@ fun DeckDetailsScreen(
     onClearFlashcardOperation: () -> Unit,
     onFlashcardSearchQueryChange: (String) -> Unit,
     onBack: () -> Unit,
+    modifier: Modifier = Modifier,
     onOpenStatistics: () -> Unit = {},
     onOpenFlashcardHistory: (CardId) -> Unit = {},
     onStartStudy: () -> Unit = {},
     onStartTypedStudy: () -> Unit = {},
-    modifier: Modifier = Modifier,
 ) {
     var showDeleteConfirmation by rememberSaveable { mutableStateOf(false) }
     val isDeleting = uiState.operationStatus == OperationStatus.LOADING
