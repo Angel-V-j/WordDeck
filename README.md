@@ -21,14 +21,15 @@ presentation, domain и data слоевете. В момента работят:
 - общ и deck-scoped statistics UI с mastery/due counts и Material 3 progress indicators;
 - обща review активност за последните 7 дни, 30 дни и целия период;
 - реактивно показване на Room данните чрез `Flow`, включително след restart;
-- ръчно извикваем Room-first `SyncCoordinator` за Firestore upload/download;
+- Room-first Firestore sync с tombstones и ограничен retry след local change,
+  app start или възстановяване на мрежата;
 - адаптивни Compose екрани и автоматизирани unit/Room/Compose тестове.
 
 Firebase Authentication и Room са скрити зад малки repository interfaces, а
 production зависимостите се създават в manual `AppContainer`. На този етап
 умишлено няма:
 
-- автоматичен sync trigger, background retry и delete recovery;
+- periodic sync service, real-time Firestore listener или generic sync engine;
 - production Firebase configuration или credentials;
 - dependency injection framework.
 
@@ -50,7 +51,7 @@ app/src/main/java/com/worddeck/
 │   │       └── Firebase Auth и Firestore remote adapter-и
 │   ├── repository/
 │   └── sync/
-│       └── един SyncCoordinator
+│       └── един SyncCoordinator и един one-time SyncWorker
 ├── domain/
 │   ├── model/
 │   │   └── User, Deck, Flashcard и review модели/value classes
@@ -88,8 +89,8 @@ app/src/main/java/com/worddeck/
 - `data/remote/firebase/` съдържа Firebase Authentication adapter-а и
   primitive-only Firestore DTO/mapper-и и concrete remote sync adapter.
 - `data/repository/` съдържа тънките Room repository implementations.
-- `data/sync/` съдържа единствения upload/download coordinator. UI продължава
-  да чете само Room.
+- `data/sync/` съдържа един upload/download coordinator и един unique,
+  network-constrained one-time worker. UI продължава да чете само Room.
 - `common/` съдържа само малки общи типове; `core/` съдържа composition root-а.
 - `navigation/` съдържа централния Navigation Compose graph.
 - `ui/` съдържа Material 3 theme и малък брой reusable UI components.
@@ -110,13 +111,12 @@ Room source of truth
 
 UseCase се добавя само за координирана бизнес операция. Review flow минава през
 `Compose → ViewModel → ReviewFlashcardUseCase`, който координира SM-2 и
-атомарното записване на state/event през repository в Room. Firestore по-късно ще
-синхронизира Room данните.
+атомарното записване на state/event през repository в Room. Firestore
+синхронизира pending Room данните, без да се използва директно от UI.
 
 `domain` не трябва да зависи от Android, Compose, Room или Firebase. При
 липса на интернет UI трябва да продължи да работи през repository и Room.
-Firebase по-късно ще синхронизира cloud данните, без UI да го използва
-директно.
+Firebase синхронизира cloud данните, без UI да го използва директно.
 
 ## Spaced repetition
 
@@ -153,5 +153,5 @@ code или README.
 
 ## Следващи основни стъпки
 
-1. tombstone delete, retry и network recovery върху текущия coordinator;
-2. multi-device приемателно тестване и дипломна документация.
+1. multi-device приемателно тестване;
+2. финално тестване и дипломна документация.

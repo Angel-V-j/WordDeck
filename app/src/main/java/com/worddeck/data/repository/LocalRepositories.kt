@@ -4,6 +4,8 @@ import android.database.sqlite.SQLiteException
 import androidx.room.withTransaction
 import com.worddeck.common.AppError
 import com.worddeck.common.AppResult
+import com.worddeck.common.Clock
+import com.worddeck.common.SystemClock
 import com.worddeck.common.Timestamp
 import com.worddeck.data.local.dao.DeckDao
 import com.worddeck.data.local.dao.FlashcardDao
@@ -32,42 +34,53 @@ import kotlinx.coroutines.flow.map
 /** Maps Deck domain operations directly to Room. Local Room data is not an authorization boundary. */
 class LocalDeckRepository(
     private val deckDao: DeckDao,
+    private val clock: Clock = SystemClock,
+    private val onLocalChange: () -> Unit = {},
 ) : DeckRepository {
     override fun observeByOwner(ownerId: UserId): Flow<AppResult<List<Deck>>> =
         deckDao.observeByOwner(ownerId.value)
             .map { it.toDomainDecks() }
             .asDatabaseResult("decks")
 
-    override suspend fun save(deck: Deck): AppResult<Unit> = databaseWrite("deck") {
+    override suspend fun save(deck: Deck): AppResult<Unit> = databaseWrite("deck", onLocalChange) {
         deckDao.save(deck.toEntity())
     }
 
-    override suspend fun delete(id: DeckId): AppResult<Unit> = databaseWrite("deck") {
-        deckDao.deleteById(id.value)
+    override suspend fun delete(id: DeckId): AppResult<Unit> = databaseWrite("deck", onLocalChange) {
+        deckDao.markDeleted(id.value, clock.now().epochMilliseconds)
     }
 }
 
 /** Maps Flashcard domain operations directly to Room. Access checks belong to the calling flow. */
 class LocalFlashcardRepository(
     private val flashcardDao: FlashcardDao,
+    private val clock: Clock = SystemClock,
+    private val onLocalChange: () -> Unit = {},
 ) : FlashcardRepository {
     override fun observeByDeck(deckId: DeckId): Flow<AppResult<List<Flashcard>>> =
         flashcardDao.observeByDeck(deckId.value)
             .map { it.toDomainFlashcards() }
             .asDatabaseResult("flashcards")
 
-    override suspend fun save(flashcard: Flashcard): AppResult<Unit> = databaseWrite("flashcard") {
+    override suspend fun save(flashcard: Flashcard): AppResult<Unit> = databaseWrite(
+        "flashcard",
+        onLocalChange,
+    ) {
         flashcardDao.save(flashcard.toEntity())
     }
 
-    override suspend fun delete(id: CardId): AppResult<Unit> = databaseWrite("flashcard") {
-        flashcardDao.deleteById(id.value)
+    override suspend fun delete(id: CardId): AppResult<Unit> = databaseWrite(
+        "flashcard",
+        onLocalChange,
+    ) {
+        flashcardDao.markDeleted(id.value, clock.now().epochMilliseconds)
     }
 }
 
 /** Keeps review progress and its immutable history event in one Room transaction. */
 class LocalReviewRepository(
     private val database: WordDeckDatabase,
+    private val onLocalChange: () -> Unit = {},
 ) : ReviewRepository {
     override fun observeStates(userId: UserId): Flow<AppResult<List<ReviewState>>> =
         database.reviewStateDao()
@@ -113,7 +126,7 @@ class LocalReviewRepository(
     override suspend fun recordReview(
         reviewState: ReviewState,
         reviewEvent: ReviewEvent,
-    ): AppResult<Unit> = databaseWrite("review") {
+    ): AppResult<Unit> = databaseWrite("review", onLocalChange) {
         database.withTransaction {
             database.reviewStateDao().save(reviewState.toEntity())
             database.reviewEventDao().insert(reviewEvent.toEntity())
@@ -134,12 +147,18 @@ private fun <T> Flow<T>.asSuccessfulDatabaseResult(resource: String): Flow<AppRe
 
 private suspend fun databaseWrite(
     resource: String,
+    onSuccess: () -> Unit = {},
     write: suspend () -> Unit,
-): AppResult<Unit> = try {
-    write()
-    AppResult.Success(Unit)
-} catch (_: SQLiteException) {
-    databaseFailure(resource)
+): AppResult<Unit> {
+    try {
+        write()
+    } catch (_: SQLiteException) {
+        return databaseFailure(resource)
+    }
+
+    // Scheduling happens only after Room has committed successfully.
+    onSuccess()
+    return AppResult.Success(Unit)
 }
 
 private fun databaseFailure(resource: String): AppResult.Failure =

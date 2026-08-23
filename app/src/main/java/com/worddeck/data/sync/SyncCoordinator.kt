@@ -137,35 +137,35 @@ class SyncCoordinator internal constructor(
         userId: UserId,
         data: SyncData,
     ): AppResult<MappedSyncData> {
-        val decks = mutableListOf<Deck>()
+        val decks = mutableListOf<RemoteDeck>()
         for (dto in data.decks) {
             if (dto.ownerId != userId.value) return ownerMismatch("deck")
-            when (val result = dto.toRemoteDomain()) {
-                is AppResult.Success -> decks += result.value
+            when (val result = dto.toRemoteDomain(allowDeleted = true)) {
+                is AppResult.Success -> decks += RemoteDeck(result.value, dto.deletedAt)
                 is AppResult.Failure -> return result
             }
         }
 
-        val allowedDeckIds = database.deckDao().findActiveIdsByOwner(userId.value).toMutableSet()
-        allowedDeckIds += decks.map { it.id.value }
+        val allowedDeckIds = database.deckDao().findIdsByOwner(userId.value).toMutableSet()
+        allowedDeckIds += decks.map { it.deck.id.value }
 
-        val flashcards = mutableListOf<Flashcard>()
+        val flashcards = mutableListOf<RemoteFlashcard>()
         for (dto in data.flashcards) {
-            when (val result = dto.toRemoteDomain()) {
+            when (val result = dto.toRemoteDomain(allowDeleted = true)) {
                 is AppResult.Success -> {
                     if (result.value.deckId.value !in allowedDeckIds) {
                         return ownerMismatch("flashcard deck")
                     }
-                    flashcards += result.value
+                    flashcards += RemoteFlashcard(result.value, dto.deletedAt)
                 }
                 is AppResult.Failure -> return result
             }
         }
 
         val allowedCardIds = database.flashcardDao()
-            .findActiveIdsByOwner(userId.value)
+            .findIdsByOwner(userId.value)
             .toMutableSet()
-        allowedCardIds += flashcards.map { it.id.value }
+        allowedCardIds += flashcards.map { it.flashcard.id.value }
 
         val reviewStates = mutableListOf<RemoteReviewState>()
         for (dto in data.reviewStates) {
@@ -209,16 +209,28 @@ class SyncCoordinator internal constructor(
 
     private suspend fun saveRemoteData(data: MappedSyncData): AppResult<Unit> = try {
         database.withTransaction {
-            for (deck in data.decks) {
+            for (remoteDeck in data.decks) {
+                val deck = remoteDeck.deck
                 val local = database.deckDao().findById(deck.id.value)
                 if (local == null || deck.updatedAt.epochMilliseconds >= local.updatedAt) {
-                    database.deckDao().save(deck.toEntity(pendingSync = false))
+                    database.deckDao().save(
+                        deck.toEntity(
+                            pendingSync = false,
+                            deletedAt = remoteDeck.deletedAt,
+                        ),
+                    )
                 }
             }
-            for (flashcard in data.flashcards) {
+            for (remoteFlashcard in data.flashcards) {
+                val flashcard = remoteFlashcard.flashcard
                 val local = database.flashcardDao().findById(flashcard.id.value)
                 if (local == null || flashcard.updatedAt.epochMilliseconds >= local.updatedAt) {
-                    database.flashcardDao().save(flashcard.toEntity(pendingSync = false))
+                    database.flashcardDao().save(
+                        flashcard.toEntity(
+                            pendingSync = false,
+                            deletedAt = remoteFlashcard.deletedAt,
+                        ),
+                    )
                 }
             }
             for (remoteState in data.reviewStates) {
@@ -255,10 +267,20 @@ class SyncCoordinator internal constructor(
 }
 
 private data class MappedSyncData(
-    val decks: List<Deck>,
-    val flashcards: List<Flashcard>,
+    val decks: List<RemoteDeck>,
+    val flashcards: List<RemoteFlashcard>,
     val reviewStates: List<RemoteReviewState>,
     val reviewEvents: List<ReviewEvent>,
+)
+
+private data class RemoteDeck(
+    val deck: Deck,
+    val deletedAt: Long?,
+)
+
+private data class RemoteFlashcard(
+    val flashcard: Flashcard,
+    val deletedAt: Long?,
 )
 
 private data class RemoteReviewState(

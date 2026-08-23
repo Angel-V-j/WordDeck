@@ -32,8 +32,8 @@ internal fun Deck.toFirestoreDto(deletedAt: Timestamp? = null): DeckDto = DeckDt
     deletedAt = deletedAt?.epochMilliseconds,
 )
 
-internal fun DeckDto.toDomain(): AppResult<Deck> {
-    if (deletedAt != null) {
+internal fun DeckDto.toDomain(allowDeleted: Boolean = false): AppResult<Deck> {
+    if (deletedAt != null && !allowDeleted) {
         return deletedContentFailure("deck")
     }
 
@@ -72,8 +72,8 @@ internal fun Flashcard.toFirestoreDto(deletedAt: Timestamp? = null): FlashcardDt
     deletedAt = deletedAt?.epochMilliseconds,
 )
 
-internal fun FlashcardDto.toDomain(): AppResult<Flashcard> {
-    if (deletedAt != null) {
+internal fun FlashcardDto.toDomain(allowDeleted: Boolean = false): AppResult<Flashcard> {
+    if (deletedAt != null && !allowDeleted) {
         return deletedContentFailure("flashcard")
     }
 
