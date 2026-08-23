@@ -54,3 +54,38 @@ synchronized collection. `SyncCoordinatorFirestoreTest` verifies Room →
 Firestore → second Room transfer, including tombstone deletes without duplicate
 review events. These tests use emulator-only users and never target production
 data.
+
+## Reproduce the two-device acceptance test
+
+Use two Android emulators, called device A and device B, and one shared Auth /
+Firestore Emulator instance. Install the same current debug APK on both devices
+and clear only WordDeck's app data before starting.
+
+1. On A, register a new test user. Create one deck and two cards. Review the
+   first card and wait for the constrained sync work to finish.
+2. On B, log in with the same test user. The login requests synchronization;
+   verify the deck, both cards and the first card's review history.
+3. To test a conflict, disconnect both devices. Edit the same deck on A, then
+   edit it again on B with a visibly different title. Reconnect A first and B
+   second, then reopen A. The B title is expected because its `updatedAt` is
+   later. Device clocks must be reasonably aligned; clock skew is a documented
+   limitation of this simple last-write-wins policy.
+4. On B, edit one card and review the second, still-new card. On A, reopen the
+   app and verify the card edit plus both separate review events.
+5. On A, delete the card and deck. On B, reopen the app and verify that neither
+   is visible. Reopen once more and confirm that review history was not
+   duplicated by retry.
+
+Acceptance run on 2026-08-23:
+
+| Check | Result |
+|---|---|
+| A create deck/card/review → B | PASS |
+| concurrent deck edit with fixed timestamps | PASS — newer B edit won on both devices |
+| B card edit and second review → A | PASS |
+| A tombstone delete → B | PASS |
+| repeated sync | PASS — exactly two review events remained |
+
+The run used two independent emulator processes (API 37 and API 35) and their
+separate production Room databases against the same Firebase Emulator user. No
+production Firebase data or credentials were used.

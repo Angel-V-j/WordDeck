@@ -19,6 +19,7 @@ private const val BLANK_REASON = "must not be blank"
 
 internal class FirebaseAuthRepository(
     private val firebaseAuth: FirebaseAuth,
+    private val onAuthenticated: () -> Unit = {},
 ) : AuthenticationRepository {
     override fun observeCurrentUser(): Flow<AppResult<User?>> = callbackFlow {
         val listener = FirebaseAuth.AuthStateListener { auth ->
@@ -57,9 +58,9 @@ internal class FirebaseAuthRepository(
                     .build(),
             ).await()
 
-            firebaseUser.toDomainUser()
-                ?.let { AppResult.Success(it) }
-                ?: unavailable("registration")
+            val user = firebaseUser.toDomainUser() ?: return unavailable("registration")
+            onAuthenticated()
+            AppResult.Success(user)
         } catch (exception: FirebaseException) {
             AppResult.Failure(exception.toRegistrationError())
         }
@@ -75,9 +76,9 @@ internal class FirebaseAuthRepository(
                 .user
                 ?: return unavailable("login")
 
-            firebaseUser.toDomainUser()
-                ?.let { AppResult.Success(it) }
-                ?: unavailable("login")
+            val user = firebaseUser.toDomainUser() ?: return unavailable("login")
+            onAuthenticated()
+            AppResult.Success(user)
         } catch (exception: FirebaseException) {
             AppResult.Failure(exception.toLoginError())
         }

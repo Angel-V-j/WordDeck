@@ -23,6 +23,7 @@ presentation, domain и data слоевете. В момента работят:
 - реактивно показване на Room данните чрез `Flow`, включително след restart;
 - Room-first Firestore sync с tombstones и ограничен retry след local change,
   app start или възстановяване на мрежата;
+- възпроизводим multi-device acceptance сценарий, проверен с два емулатора;
 - адаптивни Compose екрани и автоматизирани unit/Room/Compose тестове.
 
 Firebase Authentication и Room са скрити зад малки repository interfaces, а
@@ -153,5 +154,5 @@ code или README.
 
 ## Следващи основни стъпки
 
-1. multi-device приемателно тестване;
-2. финално тестване и дипломна документация.
+1. финално функционално, UI и usability тестване;
+2. дипломна документация и release APK.

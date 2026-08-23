@@ -55,6 +55,7 @@ class AppContainer(
                 database = WordDeckDatabase.create(context),
                 authenticationRepository = FirebaseAuthRepository(
                     FirebaseAuth.getInstance(),
+                    requestSync,
                 ),
                 onLocalChange = requestSync,
             )
