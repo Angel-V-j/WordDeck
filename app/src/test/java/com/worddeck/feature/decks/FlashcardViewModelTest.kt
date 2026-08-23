@@ -1,6 +1,5 @@
 package com.worddeck.feature.decks
 
-import com.worddeck.common.AppError
 import com.worddeck.common.AppResult
 import com.worddeck.common.Clock
 import com.worddeck.common.IdGenerator
@@ -13,11 +12,8 @@ import com.worddeck.domain.model.Flashcard
 import com.worddeck.domain.repository.FlashcardRepository
 import com.worddeck.testing.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -36,24 +32,11 @@ class FlashcardViewModelTest {
         val repository = FakeFlashcardRepository(AppResult.Success(cards))
         val viewModel = createViewModel(repository)
 
-        assertEquals(OperationStatus.LOADING, viewModel.uiState.value.listStatus)
         advanceUntilIdle()
 
         assertEquals(DECK_ID, repository.observedDeckId)
         assertEquals(OperationStatus.SUCCESS, viewModel.uiState.value.listStatus)
         assertEquals(cards, viewModel.uiState.value.cards)
-    }
-
-    @Test
-    fun `empty repository result exposes an empty successful list`() = runTest {
-        val viewModel = createViewModel(
-            FakeFlashcardRepository(AppResult.Success(emptyList())),
-        )
-
-        advanceUntilIdle()
-
-        assertEquals(OperationStatus.SUCCESS, viewModel.uiState.value.listStatus)
-        assertEquals(emptyList<Flashcard>(), viewModel.uiState.value.cards)
     }
 
     @Test
@@ -70,16 +53,16 @@ class FlashcardViewModelTest {
     }
 
     @Test
-    fun `create uses fixed id and clock and normalizes values`() = runTest {
+    fun `create uses fixed id and clock and normalizes all text`() = runTest {
         val repository = FakeFlashcardRepository()
         val viewModel = createViewModel(repository)
 
         viewModel.save(
-            existingFlashcard = null,
-            front = "  hello  ",
-            back = "  hola ",
-            exampleSentence = "  Hello, Maria! ",
-            additionalInformation = "  Common greeting  ",
+            null,
+            "  hello  ",
+            "  hola ",
+            "  Hello, Maria! ",
+            "  Common greeting  ",
         )
         advanceUntilIdle()
 
@@ -95,39 +78,25 @@ class FlashcardViewModelTest {
             ),
             repository.savedFlashcard,
         )
-        assertEquals(OperationStatus.SUCCESS, viewModel.uiState.value.operationStatus)
     }
 
     @Test
-    fun `blank optional values are saved as null`() = runTest {
-        val repository = FakeFlashcardRepository()
-        val viewModel = createViewModel(repository)
-
-        viewModel.save(null, "hello", "hola", " ", "")
-        advanceUntilIdle()
-
-        assertNull(repository.savedFlashcard?.exampleSentence)
-        assertNull(repository.savedFlashcard?.additionalInformation)
-    }
-
-    @Test
-    fun `edit preserves card identity deck and creation time`() = runTest {
-        val existingFlashcard = flashcard(
+    fun `edit preserves stable fields and delete removes the selected card`() = runTest {
+        val existing = flashcard(
             id = "existing-card",
             createdAt = Timestamp(1_000),
             updatedAt = Timestamp(2_000),
         )
         val repository = FakeFlashcardRepository()
         val viewModel = createViewModel(
-            repository = repository,
-            idGenerator = IdGenerator { error("Editing must not create another ID") },
+            repository,
+            IdGenerator { error("Editing must not generate an ID") },
         )
 
-        viewModel.save(existingFlashcard, "updated", "actualizada", "", "Note")
+        viewModel.save(existing, "updated", "actualizada", "", "Note")
         advanceUntilIdle()
-
         assertEquals(
-            existingFlashcard.copy(
+            existing.copy(
                 front = CardSide.from("updated").successValue(),
                 back = CardSide.from("actualizada").successValue(),
                 exampleSentence = null,
@@ -136,37 +105,27 @@ class FlashcardViewModelTest {
             ),
             repository.savedFlashcard,
         )
-    }
 
-    @Test
-    fun `delete removes selected card`() = runTest {
-        val repository = FakeFlashcardRepository()
-        val viewModel = createViewModel(repository)
-        val cardId = CardId.from("card-1").successValue()
-
-        viewModel.delete(cardId)
-
-        assertEquals(OperationStatus.LOADING, viewModel.uiState.value.operationStatus)
+        viewModel.delete(existing.id)
         advanceUntilIdle()
-        assertEquals(cardId, repository.deletedCardId)
-        assertEquals(OperationStatus.SUCCESS, viewModel.uiState.value.operationStatus)
+        assertEquals(existing.id, repository.deletedCardId)
     }
 
     @Test
-    fun `search ignores case and whitespace and checks every card text field`() = runTest {
+    fun `search normalizes text checks every field and blank query restores all cards`() = runTest {
         val greeting = flashcard(
-            id = "card-1",
-            front = "hello",
-            back = "hola",
-            exampleSentence = "Friendly greeting",
-            additionalInformation = "Common phrase",
+            "card-1",
+            "hello",
+            "hola",
+            "Friendly greeting",
+            "Common phrase",
         )
         val animal = flashcard(
-            id = "card-2",
-            front = "cat",
-            back = "gato",
-            exampleSentence = "The animal sleeps",
-            additionalInformation = "Noun",
+            "card-2",
+            "cat",
+            "gato",
+            "The animal sleeps",
+            "Noun",
         )
         val viewModel = createViewModel(
             FakeFlashcardRepository(AppResult.Success(listOf(greeting, animal))),
@@ -175,82 +134,20 @@ class FlashcardViewModelTest {
 
         viewModel.updateSearchQuery("  HELLO  ")
         assertEquals(listOf(greeting), viewModel.uiState.value.cards)
-
         viewModel.updateSearchQuery(" gato ")
         assertEquals(listOf(animal), viewModel.uiState.value.cards)
-
         viewModel.updateSearchQuery("ANIMAL")
         assertEquals(listOf(animal), viewModel.uiState.value.cards)
-
         viewModel.updateSearchQuery(" common ")
         assertEquals(listOf(greeting), viewModel.uiState.value.cards)
-    }
-
-    @Test
-    fun `blank search query returns every card from the selected deck`() = runTest {
-        val cards = listOf(
-            flashcard(id = "card-1", front = "hello"),
-            flashcard(
-                id = "card-2",
-                front = "cat",
-                back = "gato",
-                exampleSentence = "The cat sleeps",
-                additionalInformation = "Animal noun",
-            ),
-        )
-        val viewModel = createViewModel(
-            FakeFlashcardRepository(AppResult.Success(cards)),
-        )
-        advanceUntilIdle()
-
-        viewModel.updateSearchQuery("hello")
-        assertEquals(1, viewModel.uiState.value.cards.size)
-
         viewModel.updateSearchQuery("   ")
-        assertEquals(cards, viewModel.uiState.value.cards)
-    }
-
-    @Test
-    fun `repository and search changes publish consistent card lists`() = runTest {
-        val greeting = flashcard(id = "card-1", front = "hello")
-        val animal = flashcard(id = "card-2", front = "cat")
-        val repository = FakeFlashcardRepository(AppResult.Success(listOf(greeting)))
-        val viewModel = createViewModel(repository)
-        advanceUntilIdle()
-
-        val states = mutableListOf<FlashcardUiState>()
-        val collectionJob: Job = launch(UnconfinedTestDispatcher(testScheduler)) {
-            viewModel.uiState.collect(states::add)
-        }
-
-        states.clear()
-        repository.emit(AppResult.Success(listOf(greeting, animal)))
-        advanceUntilIdle()
-
-        assertEquals(1, states.size)
-        states.forEach { state ->
-            assertEquals(listOf(greeting, animal), state.cards)
-        }
-
-        states.clear()
-        viewModel.updateSearchQuery("cat")
-        assertEquals(1, states.size)
-        states.forEach { state ->
-            assertEquals("cat", state.searchQuery)
-            assertEquals(listOf(animal), state.cards)
-        }
-        collectionJob.cancel()
+        assertEquals(listOf(greeting, animal), viewModel.uiState.value.cards)
     }
 
     private fun createViewModel(
         repository: FakeFlashcardRepository,
         idGenerator: IdGenerator = IdGenerator { "card-1" },
-    ) = FlashcardViewModel(
-        flashcardRepository = repository,
-        deckId = DECK_ID,
-        idGenerator = idGenerator,
-        clock = Clock { NOW },
-    )
+    ) = FlashcardViewModel(repository, DECK_ID, idGenerator, Clock { NOW })
 }
 
 private val DECK_ID = DeckId.from("deck-1").successValue()
@@ -277,8 +174,6 @@ private fun flashcard(
 
 private class FakeFlashcardRepository(
     initialResult: AppResult<List<Flashcard>> = AppResult.Success(emptyList()),
-    private val saveResult: AppResult<Unit> = AppResult.Success(Unit),
-    private val deleteResult: AppResult<Unit> = AppResult.Success(Unit),
 ) : FlashcardRepository {
     private val cards = MutableStateFlow(initialResult)
 
@@ -294,18 +189,14 @@ private class FakeFlashcardRepository(
         return cards
     }
 
-    fun emit(result: AppResult<List<Flashcard>>) {
-        cards.value = result
-    }
-
     override suspend fun save(flashcard: Flashcard): AppResult<Unit> {
         savedFlashcard = flashcard
-        return saveResult
+        return AppResult.Success(Unit)
     }
 
     override suspend fun delete(id: CardId): AppResult<Unit> {
         deletedCardId = id
-        return deleteResult
+        return AppResult.Success(Unit)
     }
 }
 

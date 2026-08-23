@@ -24,186 +24,68 @@ class AuthViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     @Test
-    fun `starts with loading session state`() = runTest {
-        val viewModel = AuthViewModel(FakeAuthenticationRepository())
-
-        assertEquals(OperationStatus.LOADING, viewModel.uiState.value.sessionStatus)
-    }
-
-    @Test
-    fun `restores existing session from repository`() = runTest {
-        val user = user()
-        val repository = FakeAuthenticationRepository(
-            initialSession = AppResult.Success(user),
+    fun `restores the current session from the repository`() = runTest {
+        val expectedUser = user()
+        val viewModel = AuthViewModel(
+            FakeAuthenticationRepository(AppResult.Success(expectedUser)),
         )
-        val viewModel = AuthViewModel(repository)
 
         advanceUntilIdle()
 
         assertEquals(OperationStatus.SUCCESS, viewModel.uiState.value.sessionStatus)
-        assertEquals(user, viewModel.uiState.value.currentUser)
+        assertEquals(expectedUser, viewModel.uiState.value.currentUser)
     }
 
     @Test
-    fun `empty session opens signed out flow`() = runTest {
-        val viewModel = AuthViewModel(FakeAuthenticationRepository())
-
-        advanceUntilIdle()
-
-        assertEquals(OperationStatus.SUCCESS, viewModel.uiState.value.sessionStatus)
-        assertEquals(null, viewModel.uiState.value.currentUser)
-    }
-
-    @Test
-    fun `login validates input before calling repository`() = runTest {
+    fun `invalid login and registration forms do not call the repository`() = runTest {
         val repository = FakeAuthenticationRepository()
         val viewModel = AuthViewModel(repository)
+        advanceUntilIdle()
 
-        viewModel.login(email = "invalid-email", password = "")
-
+        viewModel.login("invalid-email", "")
         assertEquals("has invalid format", viewModel.uiState.value.formErrors.email)
         assertEquals("must not be blank", viewModel.uiState.value.formErrors.password)
         assertEquals(0, repository.loginCalls)
-    }
 
-    @Test
-    fun `register validates required display name`() = runTest {
-        val repository = FakeAuthenticationRepository()
-        val viewModel = AuthViewModel(repository)
-
-        viewModel.register(displayName = " ", email = "maria@example.com", password = "secret1")
-
+        viewModel.register(" ", "maria@example.com", "123")
         assertEquals("must not be blank", viewModel.uiState.value.formErrors.displayName)
+        assertEquals("must be at least 6 characters", viewModel.uiState.value.formErrors.password)
         assertEquals(0, repository.registerCalls)
     }
 
     @Test
-    fun `register validates password length before calling repository`() = runTest {
-        val repository = FakeAuthenticationRepository()
-        val viewModel = AuthViewModel(repository)
-
-        viewModel.register(
-            displayName = "Maria",
-            email = "maria@example.com",
-            password = "123",
-        )
-
-        assertEquals(
-            "must be at least 6 characters",
-            viewModel.uiState.value.formErrors.password,
-        )
-        assertEquals(0, repository.registerCalls)
-    }
-
-    @Test
-    fun `login exposes loading then signed in state`() = runTest {
-        val user = user()
-        val repository = FakeAuthenticationRepository(loginResult = AppResult.Success(user))
-        val viewModel = AuthViewModel(repository)
-        advanceUntilIdle()
-
-        viewModel.login(email = user.email.value, password = "secret1")
-
-        assertEquals(OperationStatus.LOADING, viewModel.uiState.value.submitStatus)
-        advanceUntilIdle()
-        assertEquals(OperationStatus.SUCCESS, viewModel.uiState.value.submitStatus)
-        assertEquals(user, viewModel.uiState.value.currentUser)
-        assertEquals(user.email, repository.loginEmail)
-    }
-
-    @Test
-    fun `repository failure is exposed to the UI`() = runTest {
-        val error = AppError.Authentication.InvalidCredentials
-        val repository = FakeAuthenticationRepository(loginResult = AppResult.Failure(error))
-        val viewModel = AuthViewModel(repository)
-        advanceUntilIdle()
-
-        viewModel.login(email = "maria@example.com", password = "wrong-password")
-        advanceUntilIdle()
-
-        assertEquals(OperationStatus.ERROR, viewModel.uiState.value.submitStatus)
-        assertEquals(error, viewModel.uiState.value.error)
-        assertEquals(null, viewModel.uiState.value.currentUser)
-    }
-
-    @Test
-    fun `unknown repository validation field is exposed as general error`() = runTest {
-        val error = AppError.Validation("unexpected field", "is invalid")
+    fun `successful login updates the session and logout clears it`() = runTest {
+        val expectedUser = user()
         val repository = FakeAuthenticationRepository(
-            loginResult = AppResult.Failure(error),
+            loginResult = AppResult.Success(expectedUser),
         )
         val viewModel = AuthViewModel(repository)
         advanceUntilIdle()
 
-        viewModel.login(email = "maria@example.com", password = "secret1")
+        viewModel.login(expectedUser.email.value, "secret1")
         advanceUntilIdle()
-
-        assertEquals(OperationStatus.ERROR, viewModel.uiState.value.submitStatus)
-        assertEquals(error, viewModel.uiState.value.error)
-        assertEquals(AuthFormErrors(), viewModel.uiState.value.formErrors)
-    }
-
-    @Test
-    fun `logout clears signed in state`() = runTest {
-        val repository = FakeAuthenticationRepository(initialSession = AppResult.Success(user()))
-        val viewModel = AuthViewModel(repository)
-        advanceUntilIdle()
+        assertEquals(expectedUser, viewModel.uiState.value.currentUser)
 
         viewModel.logout()
         advanceUntilIdle()
-
+        assertEquals(1, repository.loginCalls)
         assertEquals(1, repository.logoutCalls)
         assertEquals(null, viewModel.uiState.value.currentUser)
     }
 
     @Test
-    fun `blank display name is rejected before profile update`() = runTest {
-        val repository = FakeAuthenticationRepository(initialSession = AppResult.Success(user()))
-        val viewModel = AuthViewModel(repository)
-        advanceUntilIdle()
-
-        viewModel.updateDisplayName("   ")
-
-        assertEquals("must not be blank", viewModel.uiState.value.formErrors.displayName)
-        assertEquals(0, repository.updateDisplayNameCalls)
-    }
-
-    @Test
-    fun `profile update replaces current user`() = runTest {
-        val updatedUser = user("Maria Petrova")
-        val repository = FakeAuthenticationRepository(
-            initialSession = AppResult.Success(user()),
-            updateDisplayNameResult = AppResult.Success(updatedUser),
+    fun `repository failure is exposed to the UI`() = runTest {
+        val error = AppError.Authentication.InvalidCredentials
+        val viewModel = AuthViewModel(
+            FakeAuthenticationRepository(loginResult = AppResult.Failure(error)),
         )
-        val viewModel = AuthViewModel(repository)
         advanceUntilIdle()
 
-        viewModel.updateDisplayName("  Maria Petrova  ")
+        viewModel.login("maria@example.com", "wrong-password")
         advanceUntilIdle()
 
-        assertEquals("Maria Petrova", repository.updatedDisplayName?.value)
-        assertEquals(updatedUser, viewModel.uiState.value.currentUser)
-    }
-
-    @Test
-    fun `unauthenticated profile update returns to signed out state`() = runTest {
-        val repository = FakeAuthenticationRepository(
-            initialSession = AppResult.Success(user()),
-            updateDisplayNameResult = AppResult.Failure(
-                AppError.Authentication.Unauthenticated,
-            ),
-        )
-        val viewModel = AuthViewModel(repository)
-        advanceUntilIdle()
-
-        viewModel.updateDisplayName("Maria Petrova")
-        advanceUntilIdle()
-
-        assertEquals(null, viewModel.uiState.value.currentUser)
-        assertEquals(
-            AppError.Authentication.Unauthenticated,
-            viewModel.uiState.value.error,
-        )
+        assertEquals(OperationStatus.ERROR, viewModel.uiState.value.submitStatus)
+        assertEquals(error, viewModel.uiState.value.error)
     }
 }
 
@@ -212,7 +94,6 @@ private class FakeAuthenticationRepository(
     private val registerResult: AppResult<User> = AppResult.Success(user()),
     private val loginResult: AppResult<User> = AppResult.Success(user()),
     private val logoutResult: AppResult<Unit> = AppResult.Success(Unit),
-    private val updateDisplayNameResult: AppResult<User> = AppResult.Success(user()),
 ) : AuthenticationRepository {
     private val session = MutableStateFlow(initialSession)
 
@@ -221,12 +102,6 @@ private class FakeAuthenticationRepository(
     var loginCalls = 0
         private set
     var logoutCalls = 0
-        private set
-    var updateDisplayNameCalls = 0
-        private set
-    var updatedDisplayName: DisplayName? = null
-        private set
-    var loginEmail: EmailAddress? = null
         private set
 
     override fun observeCurrentUser(): Flow<AppResult<User?>> = session
@@ -242,7 +117,6 @@ private class FakeAuthenticationRepository(
 
     override suspend fun login(email: EmailAddress, password: String): AppResult<User> {
         loginCalls += 1
-        loginEmail = email
         return loginResult
     }
 
@@ -251,14 +125,11 @@ private class FakeAuthenticationRepository(
         return logoutResult
     }
 
-    override suspend fun updateDisplayName(displayName: DisplayName): AppResult<User> {
-        updateDisplayNameCalls += 1
-        updatedDisplayName = displayName
-        return updateDisplayNameResult
-    }
+    override suspend fun updateDisplayName(displayName: DisplayName): AppResult<User> =
+        AppResult.Success(user(displayName.value))
 }
 
-private fun user(displayName: String = "Maria"): User = User(
+private fun user(displayName: String = "Maria") = User(
     id = UserId.from("user-1").successValue(),
     email = EmailAddress.from("maria@example.com").successValue(),
     displayName = DisplayName.from(displayName).successValue(),

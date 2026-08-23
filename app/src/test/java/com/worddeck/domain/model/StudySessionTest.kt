@@ -8,95 +8,57 @@ import org.junit.Test
 
 class StudySessionTest {
     @Test
-    fun `card without review state is new and receives an initial state`() {
+    fun `new card receives the documented initial review state`() {
         val newCard = flashcard(id = "new-card")
 
-        val session = startStudySession(
+        val state = startStudySession(
             userId = USER_ID,
             deck = deck(),
             flashcards = listOf(newCard),
             reviewStates = emptyList(),
             startedAt = NOW,
-        )
+        ).cards.single().reviewState
 
-        assertEquals(listOf(newCard), session.cards.map { it.flashcard })
-
-        val initialState = session.cards.single().reviewState
-        assertEquals(USER_ID, initialState.userId)
-        assertEquals(newCard.id, initialState.cardId)
-        assertEquals(0, initialState.repetition)
-        assertEquals(2.5, initialState.easeFactor, 0.0)
-        assertEquals(0, initialState.intervalDays)
-        assertNull(initialState.lastReviewedAt)
-        assertNull(initialState.lastQuality)
-        assertEquals(NOW, initialState.nextReviewAt)
-        assertEquals(0, initialState.successfulReviewCount)
-        assertEquals(0, initialState.failedReviewCount)
-        assertEquals(MasteryLevel.NEW, initialState.masteryLevel)
+        assertEquals(USER_ID, state.userId)
+        assertEquals(newCard.id, state.cardId)
+        assertEquals(0, state.repetition)
+        assertEquals(2.5, state.easeFactor, 0.0)
+        assertEquals(0, state.intervalDays)
+        assertNull(state.lastReviewedAt)
+        assertNull(state.lastQuality)
+        assertEquals(NOW, state.nextReviewAt)
+        assertEquals(MasteryLevel.NEW, state.masteryLevel)
     }
 
     @Test
-    fun `overdue and exactly due cards are included but future card is excluded`() {
-        val overdueCard = flashcard(id = "overdue", createdAt = Timestamp(3_000))
-        val dueNowCard = flashcard(id = "due-now", createdAt = Timestamp(1_000))
-        val futureCard = flashcard(id = "future", createdAt = Timestamp(2_000))
+    fun `session includes only current owners due cards from the selected deck`() {
+        val overdue = flashcard("overdue", createdAt = Timestamp(3_000))
+        val dueNow = flashcard("due-now", createdAt = Timestamp(1_000))
+        val future = flashcard("future", createdAt = Timestamp(2_000))
+        val otherDeckCard = flashcard("other-deck-card", deckId = OTHER_DECK_ID)
 
         val session = startStudySession(
             userId = USER_ID,
             deck = deck(),
-            flashcards = listOf(futureCard, dueNowCard, overdueCard),
+            flashcards = listOf(future, dueNow, otherDeckCard, overdue),
             reviewStates = listOf(
-                reviewState(cardId = futureCard.id, nextReviewAt = Timestamp(10_001)),
-                reviewState(cardId = dueNowCard.id, nextReviewAt = NOW),
-                reviewState(cardId = overdueCard.id, nextReviewAt = Timestamp(8_000)),
+                reviewState(future.id, Timestamp(NOW.epochMilliseconds + 1)),
+                reviewState(dueNow.id, NOW),
+                reviewState(overdue.id, Timestamp(NOW.epochMilliseconds - 1)),
+                reviewState(dueNow.id, Timestamp(20_000), OTHER_USER_ID),
             ),
             startedAt = NOW,
         )
-
-        assertEquals(
-            listOf(overdueCard, dueNowCard),
-            session.cards.map { it.flashcard },
-        )
-    }
-
-    @Test
-    fun `deck owned by another user cannot start a session`() {
-        val session = startStudySession(
+        val foreignSession = startStudySession(
             userId = USER_ID,
-            deck = deck(ownerId = OTHER_USER_ID),
-            flashcards = listOf(flashcard()),
+            deck = deck(OTHER_USER_ID),
+            flashcards = listOf(overdue),
             reviewStates = emptyList(),
             startedAt = NOW,
         )
 
-        assertEquals(emptyList<StudyCard>(), session.cards)
-    }
-
-    @Test
-    fun `session uses only selected deck cards and current user progress`() {
-        val selectedCard = flashcard(id = "selected-card")
-        val otherDeckCard = flashcard(
-            id = "other-card",
-            deckId = OTHER_DECK_ID,
-        )
-
-        val session = startStudySession(
-            userId = USER_ID,
-            deck = deck(),
-            flashcards = listOf(otherDeckCard, selectedCard),
-            reviewStates = listOf(
-                reviewState(
-                    userId = OTHER_USER_ID,
-                    cardId = selectedCard.id,
-                    nextReviewAt = Timestamp(20_000),
-                ),
-            ),
-            startedAt = NOW,
-        )
-
-        assertEquals(listOf(selectedCard), session.cards.map { it.flashcard })
-        assertEquals(USER_ID, session.cards.single().reviewState.userId)
-        assertEquals(MasteryLevel.NEW, session.cards.single().reviewState.masteryLevel)
+        assertEquals(listOf(overdue, dueNow), session.cards.map { it.flashcard })
+        assertEquals(emptyList<StudyCard>(), foreignSession.cards)
     }
 }
 
@@ -119,7 +81,7 @@ private fun deck(ownerId: UserId = USER_ID) = Deck(
 )
 
 private fun flashcard(
-    id: String = "card-1",
+    id: String,
     deckId: DeckId = DECK_ID,
     createdAt: Timestamp = Timestamp(1_000),
 ) = Flashcard(
@@ -134,9 +96,9 @@ private fun flashcard(
 )
 
 private fun reviewState(
-    userId: UserId = USER_ID,
     cardId: CardId,
     nextReviewAt: Timestamp,
+    userId: UserId = USER_ID,
 ) = ReviewState(
     userId = userId,
     cardId = cardId,

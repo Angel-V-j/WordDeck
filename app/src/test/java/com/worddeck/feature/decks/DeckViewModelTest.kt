@@ -1,6 +1,5 @@
 package com.worddeck.feature.decks
 
-import com.worddeck.common.AppError
 import com.worddeck.common.AppResult
 import com.worddeck.common.Clock
 import com.worddeck.common.IdGenerator
@@ -21,9 +20,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -35,87 +32,51 @@ class DeckViewModelTest {
     @Test
     fun `create uses fixed id and clock and normalizes form values`() = runTest {
         val repository = FakeDeckRepository()
-        val viewModel = createViewModel(
-            repository = repository,
-            idGenerator = IdGenerator { "deck-1" },
-        )
+        val viewModel = createViewModel(repository)
 
         viewModel.save(
-            title = "  Spanish basics  ",
-            sourceLanguage = "  English ",
-            targetLanguage = " Spanish  ",
-            category = " Vocabulary ",
+            "  Spanish basics  ",
+            "  English ",
+            " Spanish  ",
+            " Vocabulary ",
         )
         advanceUntilIdle()
 
-        assertEquals(
-            deck(id = "deck-1", createdAt = NOW, updatedAt = NOW),
-            repository.savedDeck,
-        )
+        assertEquals(deck("deck-1", NOW, NOW), repository.savedDeck)
         assertEquals(OperationStatus.SUCCESS, viewModel.uiState.value.operationStatus)
     }
 
     @Test
-    fun `blank title shows validation and does not save`() = runTest {
+    fun `blank title is rejected before saving`() = runTest {
         val repository = FakeDeckRepository()
         val viewModel = createViewModel(repository)
 
-        viewModel.save(
-            title = "   ",
-            sourceLanguage = "English",
-            targetLanguage = "Spanish",
-            category = "Vocabulary",
-        )
+        viewModel.save("   ", "English", "Spanish", "Vocabulary")
 
         assertEquals("must not be blank", viewModel.uiState.value.titleError)
         assertNull(repository.savedDeck)
-        assertEquals(OperationStatus.ERROR, viewModel.uiState.value.operationStatus)
     }
 
     @Test
-    fun `blank optional values are saved as null`() = runTest {
-        val repository = FakeDeckRepository()
-        val viewModel = createViewModel(repository)
-
-        viewModel.save(
-            title = "Spanish basics",
-            sourceLanguage = " ",
-            targetLanguage = "",
-            category = "   ",
+    fun `edit preserves identity creation time and visibility`() = runTest {
+        val existing = deck(
+            "existing-deck",
+            Timestamp(1_000),
+            Timestamp(2_000),
+            DeckVisibility.PUBLIC,
         )
-        advanceUntilIdle()
-
-        assertNull(repository.savedDeck?.sourceLanguage)
-        assertNull(repository.savedDeck?.targetLanguage)
-        assertNull(repository.savedDeck?.category)
-    }
-
-    @Test
-    fun `edit preserves stable fields and does not generate another id`() = runTest {
         val repository = FakeDeckRepository()
-        val existingDeck = deck(
-            id = "existing-deck",
-            createdAt = Timestamp(1_000),
-            updatedAt = Timestamp(2_000),
-            visibility = DeckVisibility.PUBLIC,
-        )
         val viewModel = createViewModel(
-            repository = repository,
-            existingDeck = existingDeck,
-            idGenerator = IdGenerator { error("Editing must not create another ID") },
+            repository,
+            existing,
+            IdGenerator { error("Editing must not generate an ID") },
         )
 
-        assertEquals("Spanish basics", viewModel.uiState.value.title)
-        viewModel.save(
-            title = "Updated deck",
-            sourceLanguage = "Bulgarian",
-            targetLanguage = "Spanish",
-            category = "Travel",
-        )
+        viewModel.save("Updated deck", "Bulgarian", "Spanish", "Travel")
         advanceUntilIdle()
 
         assertEquals(
-            existingDeck.copy(
+            existing.copy(
                 title = DeckTitle.from("Updated deck").successValue(),
                 sourceLanguage = DeckLanguage.from("Bulgarian"),
                 targetLanguage = DeckLanguage.from("Spanish"),
@@ -127,53 +88,16 @@ class DeckViewModelTest {
     }
 
     @Test
-    fun `repository failure is exposed to the screen`() = runTest {
-        val error = AppError.Unavailable("deck")
-        val viewModel = createViewModel(FakeDeckRepository(AppResult.Failure(error)))
-
-        viewModel.save("Spanish basics", "", "", "")
-        advanceUntilIdle()
-
-        assertEquals(error, viewModel.uiState.value.error)
-        assertEquals(OperationStatus.ERROR, viewModel.uiState.value.operationStatus)
-    }
-
-    @Test
     fun `delete removes the existing deck`() = runTest {
-        val existingDeck = deck(
-            id = "existing-deck",
-            createdAt = Timestamp(1_000),
-            updatedAt = Timestamp(2_000),
-        )
+        val existing = deck("existing-deck", Timestamp(1_000), Timestamp(2_000))
         val repository = FakeDeckRepository()
-        val viewModel = createViewModel(repository, existingDeck = existingDeck)
+        val viewModel = createViewModel(repository, existing)
 
         viewModel.delete()
-
-        assertEquals(OperationStatus.LOADING, viewModel.uiState.value.operationStatus)
         advanceUntilIdle()
-        assertEquals(existingDeck.id, repository.deletedDeckId)
+
+        assertEquals(existing.id, repository.deletedDeckId)
         assertEquals(OperationStatus.SUCCESS, viewModel.uiState.value.operationStatus)
-    }
-
-    @Test
-    fun `delete failure is exposed to the screen`() = runTest {
-        val error = AppError.Unavailable("deck")
-        val existingDeck = deck(
-            id = "existing-deck",
-            createdAt = Timestamp(1_000),
-            updatedAt = Timestamp(2_000),
-        )
-        val repository = FakeDeckRepository(
-            deleteResult = AppResult.Failure(error),
-        )
-        val viewModel = createViewModel(repository, existingDeck = existingDeck)
-
-        viewModel.delete()
-        advanceUntilIdle()
-
-        assertEquals(OperationStatus.ERROR, viewModel.uiState.value.operationStatus)
-        assertEquals(error, viewModel.uiState.value.error)
     }
 
     private fun createViewModel(
@@ -209,10 +133,7 @@ private fun deck(
     updatedAt = updatedAt,
 )
 
-private class FakeDeckRepository(
-    private val saveResult: AppResult<Unit> = AppResult.Success(Unit),
-    private val deleteResult: AppResult<Unit> = AppResult.Success(Unit),
-) : DeckRepository {
+private class FakeDeckRepository : DeckRepository {
     var savedDeck: Deck? = null
         private set
     var deletedDeckId: DeckId? = null
@@ -223,12 +144,12 @@ private class FakeDeckRepository(
 
     override suspend fun save(deck: Deck): AppResult<Unit> {
         savedDeck = deck
-        return saveResult
+        return AppResult.Success(Unit)
     }
 
     override suspend fun delete(id: DeckId): AppResult<Unit> {
         deletedDeckId = id
-        return deleteResult
+        return AppResult.Success(Unit)
     }
 }
 

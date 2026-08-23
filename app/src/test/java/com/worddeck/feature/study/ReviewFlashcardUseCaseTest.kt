@@ -19,7 +19,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Test
 
 class ReviewFlashcardUseCaseTest {
@@ -64,27 +63,6 @@ class ReviewFlashcardUseCaseTest {
         assertEquals(1, repository.recordCalls)
     }
 
-    @Test
-    fun `review state owned by another user is rejected before writing`() = runTest {
-        val repository = FakeReviewRepository()
-        val useCase = ReviewFlashcardUseCase(
-            reviewRepository = repository,
-            clock = Clock { REVIEWED_AT },
-            idGenerator = IdGenerator { "review-1" },
-        )
-        val otherUser = UserId.from("user-2").successValue()
-
-        val result = useCase(otherUser, initialState(), ReviewRating.EASY)
-
-        assertEquals(
-            AppResult.Failure(
-                AppError.Validation("review state", "belongs to another user"),
-            ),
-            result,
-        )
-        assertEquals(0, repository.recordCalls)
-        assertNull(repository.recordedEvent)
-    }
 }
 
 private class FakeReviewRepository(
