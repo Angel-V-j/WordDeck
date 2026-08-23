@@ -1,7 +1,7 @@
 # WordDeck
 
-Firebase Authentication development and Auth Emulator setup are described in
-[`FIREBASE_SETUP.md`](FIREBASE_SETUP.md).
+Firebase Authentication/Firestore development and Emulator setup are described
+in [`FIREBASE_SETUP.md`](FIREBASE_SETUP.md).
 
 WordDeck е Android приложение за изучаване на чужди езици чрез spaced
 repetition. Проектът се разработва постепенно като дипломна работа.
@@ -27,7 +27,7 @@ Firebase Authentication и Room са скрити зад малки repository i
 production зависимостите се създават в manual `AppContainer`. На този етап
 умишлено няма:
 
-- Firestore, production Firebase configuration или credentials;
+- работеща Firestore синхронизация, production Firebase configuration или credentials;
 - synchronization между устройства;
 - dependency injection framework.
 
@@ -46,7 +46,7 @@ app/src/main/java/com/worddeck/
 │   │   └── mapper/
 │   ├── remote/
 │   │   └── firebase/
-│   │       └── Firebase Auth adapter
+│   │       └── Firebase Auth adapter и Firestore DTO/mapper-и
 │   └── repository/
 ├── domain/
 │   ├── model/
@@ -82,8 +82,8 @@ app/src/main/java/com/worddeck/
 - `domain/repository/` съдържа само абстракциите, които feature слоят може да
   използва. Те не знаят за Room или Firebase.
 - `data/local/` съдържа текущия Room source of truth.
-- `data/remote/firebase/` съдържа Firebase Authentication adapter-а; Firestore
-  ще бъде добавен във фазата за synchronization.
+- `data/remote/firebase/` съдържа Firebase Authentication adapter-а и
+  primitive-only Firestore DTO/mapper-и. Sync coordinator още няма.
 - `data/repository/` съдържа тънките Room repository implementations.
 - `common/` съдържа само малки общи типове; `core/` съдържа composition root-а.
 - `navigation/` съдържа централния Navigation Compose graph.
@@ -148,5 +148,5 @@ code или README.
 
 ## Следващи основни стъпки
 
-1. минимална Firestore синхронизация върху Room source of truth;
+1. един минимален SyncCoordinator върху Room source of truth;
 2. приемателно тестване и дипломна документация.

@@ -1,0 +1,38 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedInAs(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    match /users/{userId}/decks/{deckId} {
+      allow read: if signedInAs(userId);
+      allow create, update: if signedInAs(userId)
+        && request.resource.data.id == deckId
+        && request.resource.data.ownerId == userId;
+    }
+
+    match /users/{userId}/flashcards/{cardId} {
+      allow read: if signedInAs(userId);
+      allow create, update: if signedInAs(userId)
+        && request.resource.data.id == cardId;
+    }
+
+    match /users/{userId}/reviewStates/{cardId} {
+      allow read: if signedInAs(userId);
+      allow create, update: if signedInAs(userId)
+        && request.resource.data.cardId == cardId
+        && request.resource.data.userId == userId;
+    }
+
+    match /users/{userId}/reviewEvents/{eventId} {
+      allow read: if signedInAs(userId);
+      allow create: if signedInAs(userId)
+        && request.resource.data.id == eventId
+        && request.resource.data.userId == userId;
+      allow update: if signedInAs(userId)
+        && request.resource.data == resource.data;
+    }
+  }
+}
