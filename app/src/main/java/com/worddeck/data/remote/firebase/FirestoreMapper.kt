@@ -19,7 +19,10 @@ import com.worddeck.domain.model.ReviewState
 import com.worddeck.domain.model.Sm2Quality
 import com.worddeck.domain.model.UserId
 
-internal fun Deck.toFirestoreDto(deletedAt: Timestamp? = null): DeckDto = DeckDto(
+internal fun Deck.toFirestoreDto(
+    deletedAt: Timestamp? = null,
+    ownerId: UserId = this.ownerId,
+): DeckDto = DeckDto(
     id = id.value,
     ownerId = ownerId.value,
     title = title.value,
@@ -96,7 +99,10 @@ internal fun FlashcardDto.toDomain(allowDeleted: Boolean = false): AppResult<Fla
     )
 }
 
-internal fun ReviewState.toFirestoreDto(updatedAt: Timestamp): ReviewStateDto = ReviewStateDto(
+internal fun ReviewState.toFirestoreDto(
+    updatedAt: Timestamp,
+    userId: UserId = this.userId,
+): ReviewStateDto = ReviewStateDto(
     userId = userId.value,
     cardId = cardId.value,
     repetition = repetition,
@@ -141,7 +147,9 @@ internal fun ReviewStateDto.toDomain(): AppResult<ReviewState> {
     )
 }
 
-internal fun ReviewEvent.toFirestoreDto(): ReviewEventDto = ReviewEventDto(
+internal fun ReviewEvent.toFirestoreDto(
+    userId: UserId = this.userId,
+): ReviewEventDto = ReviewEventDto(
     id = id.value,
     userId = userId.value,
     cardId = cardId.value,

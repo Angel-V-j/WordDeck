@@ -8,7 +8,6 @@ import com.worddeck.common.AppResult
 import com.worddeck.domain.model.DisplayName
 import com.worddeck.domain.model.EmailAddress
 import com.worddeck.domain.model.User
-import com.worddeck.domain.repository.AuthenticationRepository
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -19,8 +18,9 @@ private const val BLANK_REASON = "must not be blank"
 
 internal class FirebaseAuthRepository(
     private val firebaseAuth: FirebaseAuth,
-    private val onAuthenticated: () -> Unit = {},
-) : AuthenticationRepository {
+) : FirebaseAuthService {
+    override fun currentUser(): User? = firebaseAuth.currentUser?.toDomainUser()
+
     override fun observeCurrentUser(): Flow<AppResult<User?>> = callbackFlow {
         val listener = FirebaseAuth.AuthStateListener { auth ->
             val currentUser = auth.currentUser
@@ -59,7 +59,6 @@ internal class FirebaseAuthRepository(
             ).await()
 
             val user = firebaseUser.toDomainUser() ?: return unavailable("registration")
-            onAuthenticated()
             AppResult.Success(user)
         } catch (exception: FirebaseException) {
             AppResult.Failure(exception.toRegistrationError())
@@ -77,7 +76,6 @@ internal class FirebaseAuthRepository(
                 ?: return unavailable("login")
 
             val user = firebaseUser.toDomainUser() ?: return unavailable("login")
-            onAuthenticated()
             AppResult.Success(user)
         } catch (exception: FirebaseException) {
             AppResult.Failure(exception.toLoginError())
@@ -118,3 +116,21 @@ private fun blankInputFailure(value: String, field: String): AppResult.Failure? 
 
 private fun unavailable(resource: String): AppResult.Failure =
     AppResult.Failure(AppError.Unavailable(resource))
+
+internal interface FirebaseAuthService {
+    fun currentUser(): User?
+
+    fun observeCurrentUser(): Flow<AppResult<User?>>
+
+    suspend fun register(
+        displayName: DisplayName,
+        email: EmailAddress,
+        password: String,
+    ): AppResult<User>
+
+    suspend fun login(email: EmailAddress, password: String): AppResult<User>
+
+    suspend fun updateDisplayName(displayName: DisplayName): AppResult<User>
+
+    suspend fun logout(): AppResult<Unit>
+}

@@ -10,8 +10,10 @@ import com.worddeck.domain.model.EmailAddress
 import com.worddeck.domain.model.User
 import com.worddeck.domain.repository.AuthenticationRepository
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -21,19 +23,30 @@ data class AuthFormErrors(
     val password: String? = null,
 )
 
+enum class AuthFallback {
+    REGISTRATION,
+    LOGIN,
+}
+
 data class AuthUiState(
     val currentUser: User? = null,
     val sessionStatus: OperationStatus = OperationStatus.LOADING,
     val submitStatus: OperationStatus = OperationStatus.IDLE,
     val formErrors: AuthFormErrors = AuthFormErrors(),
     val error: AppError? = null,
+    val offlineFallback: AuthFallback? = null,
 )
 
 class AuthViewModel(
     private val authenticationRepository: AuthenticationRepository,
+    private val refreshAfterOnlineAuthentication: suspend (User) -> Unit = {},
+    networkAvailability: Flow<Boolean> = flowOf(true),
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(AuthUiState())
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
+    private var networkAvailable = true
+    // Offline registration keeps only the validated name; email and password are never retained.
+    private var pendingOfflineDisplayName: DisplayName? = null
 
     init {
         viewModelScope.launch {
@@ -53,6 +66,9 @@ class AuthViewModel(
                     }
                 }
             }
+        }
+        viewModelScope.launch {
+            networkAvailability.collect { networkAvailable = it }
         }
     }
 
@@ -77,12 +93,29 @@ class AuthViewModel(
             }
         }
 
-        submit {
+        submit(
+            synchronizeAfterSuccess = true,
+            fallbackOnUnavailable = AuthFallback.LOGIN,
+        ) {
             authenticationRepository.login(
                 email = validEmail,
                 password = password,
             )
         }
+    }
+
+    fun createOfflineProfile(displayName: String) {
+        if (_uiState.value.submitStatus == OperationStatus.LOADING) return
+
+        val displayNameResult = DisplayName.from(displayName)
+        val validDisplayName = when (displayNameResult) {
+            is AppResult.Success -> displayNameResult.value
+            is AppResult.Failure -> {
+                showFailure(displayNameResult.error)
+                return
+            }
+        }
+        submit { authenticationRepository.createOfflineProfile(validDisplayName) }
     }
 
     fun register(displayName: String, email: String, password: String) {
@@ -115,7 +148,18 @@ class AuthViewModel(
             }
         }
 
-        submit {
+        // A local-only profile is uploaded by the explicit sync flow after registration.
+        // A normal online registration can use the regular two-way refresh.
+        val isLinkingOfflineProfile = _uiState.value.currentUser?.isLinked == false
+        submit(
+            synchronizeAfterSuccess = !isLinkingOfflineProfile,
+            fallbackOnUnavailable = if (isLinkingOfflineProfile) {
+                null
+            } else {
+                AuthFallback.REGISTRATION
+            },
+            offlineDisplayName = validDisplayName,
+        ) {
             authenticationRepository.register(
                 displayName = validDisplayName,
                 email = validEmail,
@@ -167,31 +211,84 @@ class AuthViewModel(
     }
 
     fun clearErrors() {
+        pendingOfflineDisplayName = null
         _uiState.update {
             it.copy(
                 submitStatus = OperationStatus.IDLE,
                 formErrors = AuthFormErrors(),
                 error = null,
+                offlineFallback = null,
             )
         }
     }
 
-    private fun submit(operation: suspend () -> AppResult<User>) {
+    fun dismissOfflineFallback() {
+        pendingOfflineDisplayName = null
+        _uiState.update { it.copy(offlineFallback = null) }
+    }
+
+    fun continueOffline() {
+        if (_uiState.value.submitStatus == OperationStatus.LOADING) return
+
+        when (_uiState.value.offlineFallback) {
+            AuthFallback.REGISTRATION -> {
+                val displayName = pendingOfflineDisplayName ?: return
+                pendingOfflineDisplayName = null
+                submit { authenticationRepository.createOfflineProfile(displayName) }
+            }
+            AuthFallback.LOGIN -> {
+                pendingOfflineDisplayName = null
+                submit { authenticationRepository.restoreLocalProfile() }
+            }
+            null -> Unit
+        }
+    }
+
+    private fun submit(
+        synchronizeAfterSuccess: Boolean = false,
+        fallbackOnUnavailable: AuthFallback? = null,
+        offlineDisplayName: DisplayName? = null,
+        operation: suspend () -> AppResult<User>,
+    ) {
         _uiState.update {
             it.copy(
                 submitStatus = OperationStatus.LOADING,
                 formErrors = AuthFormErrors(),
                 error = null,
+                offlineFallback = null,
             )
         }
         viewModelScope.launch {
             when (val result = operation()) {
-                is AppResult.Success -> _uiState.value = AuthUiState(
-                    currentUser = result.value,
-                    sessionStatus = OperationStatus.SUCCESS,
-                    submitStatus = OperationStatus.SUCCESS,
-                )
-                is AppResult.Failure -> showFailure(result.error)
+                is AppResult.Success -> {
+                    _uiState.value = AuthUiState(
+                        currentUser = result.value,
+                        sessionStatus = OperationStatus.SUCCESS,
+                        submitStatus = OperationStatus.SUCCESS,
+                    )
+                    if (synchronizeAfterSuccess) {
+                        refreshAfterOnlineAuthentication(result.value)
+                    }
+                }
+                is AppResult.Failure -> {
+                    val error = result.error.asAuthenticationError(networkAvailable)
+                    if (
+                        fallbackOnUnavailable != null &&
+                        networkAvailable &&
+                        error is AppError.Unavailable
+                    ) {
+                        pendingOfflineDisplayName = offlineDisplayName
+                        _uiState.update {
+                            it.copy(
+                                submitStatus = OperationStatus.ERROR,
+                                error = error,
+                                offlineFallback = fallbackOnUnavailable,
+                            )
+                        }
+                    } else {
+                        showFailure(error)
+                    }
+                }
             }
         }
     }
@@ -207,11 +304,13 @@ class AuthViewModel(
     }
 
     private fun showFailure(error: AppError) {
+        pendingOfflineDisplayName = null
         if (error == AppError.Authentication.Unauthenticated) {
             _uiState.value = AuthUiState(
                 sessionStatus = OperationStatus.SUCCESS,
                 submitStatus = OperationStatus.ERROR,
                 error = error,
+                offlineFallback = null,
             )
             return
         }
@@ -223,17 +322,27 @@ class AuthViewModel(
                     submitStatus = OperationStatus.ERROR,
                     formErrors = formErrors,
                     error = null,
+                    offlineFallback = null,
                 )
             } else {
                 it.copy(
                     submitStatus = OperationStatus.ERROR,
                     formErrors = AuthFormErrors(),
                     error = error,
+                    offlineFallback = null,
                 )
             }
         }
     }
 }
+
+/** Firebase can report a network exception even when Android still has validated internet. */
+internal fun AppError.asAuthenticationError(networkAvailable: Boolean): AppError =
+    if (networkAvailable && this == AppError.NetworkUnavailable) {
+        AppError.Unavailable("authentication")
+    } else {
+        this
+    }
 
 private fun AuthFormErrors.hasErrors(): Boolean =
     displayName != null || email != null || password != null

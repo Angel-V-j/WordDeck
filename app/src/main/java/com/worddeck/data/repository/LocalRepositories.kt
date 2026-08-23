@@ -35,18 +35,17 @@ import kotlinx.coroutines.flow.map
 class LocalDeckRepository(
     private val deckDao: DeckDao,
     private val clock: Clock = SystemClock,
-    private val onLocalChange: () -> Unit = {},
 ) : DeckRepository {
     override fun observeByOwner(ownerId: UserId): Flow<AppResult<List<Deck>>> =
         deckDao.observeByOwner(ownerId.value)
             .map { it.toDomainDecks() }
             .asDatabaseResult("decks")
 
-    override suspend fun save(deck: Deck): AppResult<Unit> = databaseWrite("deck", onLocalChange) {
+    override suspend fun save(deck: Deck): AppResult<Unit> = databaseWrite("deck") {
         deckDao.save(deck.toEntity())
     }
 
-    override suspend fun delete(id: DeckId): AppResult<Unit> = databaseWrite("deck", onLocalChange) {
+    override suspend fun delete(id: DeckId): AppResult<Unit> = databaseWrite("deck") {
         deckDao.markDeleted(id.value, clock.now().epochMilliseconds)
     }
 }
@@ -55,7 +54,6 @@ class LocalDeckRepository(
 class LocalFlashcardRepository(
     private val flashcardDao: FlashcardDao,
     private val clock: Clock = SystemClock,
-    private val onLocalChange: () -> Unit = {},
 ) : FlashcardRepository {
     override fun observeByDeck(deckId: DeckId): Flow<AppResult<List<Flashcard>>> =
         flashcardDao.observeByDeck(deckId.value)
@@ -64,14 +62,12 @@ class LocalFlashcardRepository(
 
     override suspend fun save(flashcard: Flashcard): AppResult<Unit> = databaseWrite(
         "flashcard",
-        onLocalChange,
     ) {
         flashcardDao.save(flashcard.toEntity())
     }
 
     override suspend fun delete(id: CardId): AppResult<Unit> = databaseWrite(
         "flashcard",
-        onLocalChange,
     ) {
         flashcardDao.markDeleted(id.value, clock.now().epochMilliseconds)
     }
@@ -80,7 +76,6 @@ class LocalFlashcardRepository(
 /** Keeps review progress and its immutable history event in one Room transaction. */
 class LocalReviewRepository(
     private val database: WordDeckDatabase,
-    private val onLocalChange: () -> Unit = {},
 ) : ReviewRepository {
     override fun observeStates(userId: UserId): Flow<AppResult<List<ReviewState>>> =
         database.reviewStateDao()
@@ -126,7 +121,7 @@ class LocalReviewRepository(
     override suspend fun recordReview(
         reviewState: ReviewState,
         reviewEvent: ReviewEvent,
-    ): AppResult<Unit> = databaseWrite("review", onLocalChange) {
+    ): AppResult<Unit> = databaseWrite("review") {
         database.withTransaction {
             database.reviewStateDao().save(reviewState.toEntity())
             database.reviewEventDao().insert(reviewEvent.toEntity())
@@ -147,7 +142,6 @@ private fun <T> Flow<T>.asSuccessfulDatabaseResult(resource: String): Flow<AppRe
 
 private suspend fun databaseWrite(
     resource: String,
-    onSuccess: () -> Unit = {},
     write: suspend () -> Unit,
 ): AppResult<Unit> {
     try {
@@ -155,9 +149,6 @@ private suspend fun databaseWrite(
     } catch (_: SQLiteException) {
         return databaseFailure(resource)
     }
-
-    // Scheduling happens only after Room has committed successfully.
-    onSuccess()
     return AppResult.Success(Unit)
 }
 

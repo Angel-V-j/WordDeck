@@ -62,17 +62,19 @@ Firestore Emulator instance. Install the same current debug APK on both devices
 and clear only WordDeck's app data before starting.
 
 1. On A, register a new test user. Create one deck and two cards. Review the
-   first card and wait for the constrained sync work to finish.
-2. On B, log in with the same test user. The login requests synchronization;
+   first card, open Profile, choose Sync data, log in again and confirm.
+2. On B, log in with the same test user. Login refreshes the local Room data;
    verify the deck, both cards and the first card's review history.
 3. To test a conflict, disconnect both devices. Edit the same deck on A, then
    edit it again on B with a visibly different title. Reconnect A first and B
    second, then reopen A. The B title is expected because its `updatedAt` is
-   later. Device clocks must be reasonably aligned; clock skew is a documented
+   later. Explicitly synchronize B and then A. Device clocks must be reasonably aligned; clock skew is a documented
    limitation of this simple last-write-wins policy.
-4. On B, edit one card and review the second, still-new card. On A, reopen the
+4. On B, edit one card and review the second, still-new card, then explicitly
+   synchronize. On A, log in or explicitly synchronize and
    app and verify the card edit plus both separate review events.
-5. On A, delete the card and deck. On B, reopen the app and verify that neither
+5. On A, delete the card and deck, then confirm synchronization. On B, refresh
+   through login or synchronization and verify that neither
    is visible. Reopen once more and confirm that review history was not
    duplicated by retry.
 

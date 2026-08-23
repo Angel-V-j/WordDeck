@@ -4,7 +4,6 @@ import android.app.Application
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.worddeck.core.AppContainer
-import com.worddeck.data.sync.SyncWorkScheduler
 
 class WordDeckApplication : Application() {
     lateinit var appContainer: AppContainer
@@ -20,6 +19,5 @@ class WordDeckApplication : Application() {
         }
 
         appContainer = AppContainer.create(this)
-        SyncWorkScheduler.enqueue(this)
     }
 }

@@ -36,6 +36,7 @@ internal fun FirebaseUser.toDomainUser(): User? {
         id = userId,
         email = emailAddress,
         displayName = name,
+        firebaseUid = userId,
     )
 }
 

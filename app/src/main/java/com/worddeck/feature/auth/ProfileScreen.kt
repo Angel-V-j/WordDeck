@@ -36,6 +36,7 @@ fun ProfileScreen(
     displayNameError: String?,
     error: AppError?,
     onUpdateDisplayName: (String) -> Unit,
+    onSync: () -> Unit,
     onLogout: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
@@ -71,8 +72,13 @@ fun ProfileScreen(
                 text = stringResource(R.string.welcome_user, user.displayName.value),
                 style = MaterialTheme.typography.titleLarge,
             )
+            val email = user.email
             Text(
-                text = stringResource(R.string.email_identity, user.email.value),
+                text = if (email == null) {
+                    stringResource(R.string.offline_profile_status)
+                } else {
+                    stringResource(R.string.email_identity, email.value)
+                },
                 style = MaterialTheme.typography.bodyLarge,
             )
             OutlinedTextField(
@@ -93,6 +99,13 @@ fun ProfileScreen(
                 enabled = !isSubmitting,
             ) {
                 Text(stringResource(R.string.save_display_name_action))
+            }
+            OutlinedButton(
+                onClick = onSync,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !isSubmitting,
+            ) {
+                Text(stringResource(R.string.sync_data_action))
             }
             if (error != null) {
                 Text(

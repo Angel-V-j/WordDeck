@@ -11,7 +11,7 @@ repetition. Проектът се разработва постепенно ка
 Проектът е един Gradle application module (`:app`) с Kotlin packages за
 presentation, domain и data слоевете. В момента работят:
 
-- регистрация, вход, възстановяване на Firebase сесия, профил и изход;
+- online регистрация/вход и локален offline профил без съхранена парола;
 - локално създаване, редактиране, изтриване, търсене и филтриране на тестета;
 - локално създаване, редактиране, изтриване и търсене на карти;
 - flashcard study flow с reveal и `Again / Hard / Good / Easy` оценяване;
@@ -21,8 +21,7 @@ presentation, domain и data слоевете. В момента работят:
 - общ и deck-scoped statistics UI с mastery/due counts и Material 3 progress indicators;
 - обща review активност за последните 7 дни, 30 дни и целия период;
 - реактивно показване на Room данните чрез `Flow`, включително след restart;
-- Room-first Firestore sync с tombstones и ограничен retry след local change,
-  app start или възстановяване на мрежата;
+- Room-first Firestore sync с tombstones, стартиран изрично от потребителя;
 - възпроизводим multi-device acceptance сценарий, проверен с два емулатора;
 - адаптивни Compose екрани и автоматизирани unit/Room/Compose тестове.
 
@@ -52,7 +51,7 @@ app/src/main/java/com/worddeck/
 │   │       └── Firebase Auth и Firestore remote adapter-и
 │   ├── repository/
 │   └── sync/
-│       └── един SyncCoordinator и един one-time SyncWorker
+│       └── един SyncCoordinator
 ├── domain/
 │   ├── model/
 │   │   └── User, Deck, Flashcard и review модели/value classes
@@ -91,8 +90,8 @@ app/src/main/java/com/worddeck/
 - `data/remote/firebase/` съдържа Firebase Authentication adapter-а и
   primitive-only Firestore DTO/mapper-и и concrete remote sync adapter.
 - `data/repository/` съдържа тънките Room repository implementations.
-- `data/sync/` съдържа един upload/download coordinator и един unique,
-  network-constrained one-time worker. UI продължава да чете само Room.
+- `data/sync/` съдържа един upload/download coordinator. UI продължава да
+  чете само Room, а cloud upload се стартира след изрично действие.
 - `common/` съдържа само малки общи типове; `core/` съдържа composition root-а.
 - `navigation/` съдържа централния Navigation Compose graph.
 - `ui/` съдържа Material 3 theme.
@@ -119,6 +118,10 @@ UseCase се добавя само за координирана бизнес о
 `domain` не трябва да зависи от Android, Compose, Room или Firebase. При
 липса на интернет UI трябва да продължи да работи през repository и Room.
 Firebase синхронизира cloud данните, без UI да го използва директно.
+Един активен локален профил се пази в `SharedPreferences`; там няма парола или
+Firebase credentials. При свързване на нов account локалните данни се качват
+като source of truth. Вече свързан профил изисква повторен Firebase login и
+потвърждение преди локалните промени да актуализират cloud данните.
 
 ## Spaced repetition
 

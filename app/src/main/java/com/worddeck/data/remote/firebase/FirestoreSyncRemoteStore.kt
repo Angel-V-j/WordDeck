@@ -14,15 +14,26 @@ import kotlinx.coroutines.tasks.await
 internal class FirestoreSyncRemoteStore(
     private val firestore: FirebaseFirestore,
 ) : SyncRemoteStore {
-    override suspend fun upload(userId: String, data: SyncData): AppResult<Unit> = try {
+    override suspend fun upload(userId: String, data: SyncData): AppResult<Unit> =
+        upload(userId, data, force = false)
+
+    override suspend fun forceUpload(userId: String, data: SyncData): AppResult<Unit> =
+        upload(userId, data, force = true)
+
+    private suspend fun upload(
+        userId: String,
+        data: SyncData,
+        force: Boolean,
+    ): AppResult<Unit> = try {
         for (deck in data.decks) {
-            uploadMutable(document(userId, DECKS, deck.id), deck, deck.updatedAt)
+            uploadMutable(document(userId, DECKS, deck.id), deck, deck.updatedAt, force)
         }
         for (flashcard in data.flashcards) {
             uploadMutable(
                 document(userId, FLASHCARDS, flashcard.id),
                 flashcard,
                 flashcard.updatedAt,
+                force,
             )
         }
         for (state in data.reviewStates) {
@@ -30,6 +41,7 @@ internal class FirestoreSyncRemoteStore(
                 document(userId, REVIEW_STATES, state.cardId),
                 state,
                 state.updatedAt,
+                force,
             )
         }
         for (event in data.reviewEvents) {
@@ -71,7 +83,12 @@ internal class FirestoreSyncRemoteStore(
         reference: DocumentReference,
         value: Any,
         updatedAt: Long,
+        force: Boolean,
     ) {
+        if (force) {
+            reference.set(value).await()
+            return
+        }
         firestore.runTransaction { transaction ->
             val remote = transaction.get(reference)
             val remoteUpdatedAt = remote.getLong("updatedAt")

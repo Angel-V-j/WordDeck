@@ -37,6 +37,7 @@ import com.worddeck.domain.repository.FlashcardRepository
 import com.worddeck.domain.repository.ReviewRepository
 import com.worddeck.feature.auth.AuthUiState
 import com.worddeck.feature.auth.LoginScreen
+import com.worddeck.feature.auth.OfflineProfileScreen
 import com.worddeck.feature.auth.ProfileScreen
 import com.worddeck.feature.auth.RegisterScreen
 import com.worddeck.feature.decks.DeckEditorScreen
@@ -97,9 +98,12 @@ fun AppNavigation(
     reviewRepository: ReviewRepository,
     idGenerator: IdGenerator,
     clock: Clock,
+    networkAvailable: Boolean?,
     onLogin: (email: String, password: String) -> Unit,
     onRegister: (displayName: String, email: String, password: String) -> Unit,
+    onCreateOfflineProfile: (displayName: String) -> Unit,
     onUpdateDisplayName: (displayName: String) -> Unit,
+    onSync: () -> Unit,
     onLogout: () -> Unit,
     onClearErrors: () -> Unit,
     modifier: Modifier = Modifier,
@@ -107,6 +111,12 @@ fun AppNavigation(
     val currentUser = uiState.currentUser
     when {
         uiState.sessionStatus == OperationStatus.LOADING -> LoadingScreen(modifier)
+        currentUser == null && networkAvailable == null -> LoadingScreen(modifier)
+        currentUser == null && networkAvailable == false -> OfflineProfileScreen(
+            uiState = uiState,
+            onContinue = onCreateOfflineProfile,
+            modifier = modifier,
+        )
         currentUser == null -> AuthNavigation(
             uiState = uiState,
             onLogin = onLogin,
@@ -123,6 +133,7 @@ fun AppNavigation(
             clock = clock,
             user = currentUser,
             onUpdateDisplayName = onUpdateDisplayName,
+            onSync = onSync,
             onLogout = onLogout,
             modifier = modifier,
         )
@@ -176,6 +187,7 @@ private fun MainNavigation(
     clock: Clock,
     user: User,
     onUpdateDisplayName: (String) -> Unit,
+    onSync: () -> Unit,
     onLogout: () -> Unit,
     modifier: Modifier,
 ) {
@@ -225,6 +237,7 @@ private fun MainNavigation(
                 displayNameError = uiState.formErrors.displayName,
                 error = uiState.error,
                 onUpdateDisplayName = onUpdateDisplayName,
+                onSync = onSync,
                 onLogout = onLogout,
                 onBack = { navController.popBackStack() },
             )

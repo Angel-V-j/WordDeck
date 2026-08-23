@@ -113,6 +113,27 @@
     <string name="review_save_error">The review could not be saved. Please try again.</string>
     <string name="welcome_user">Welcome, %1$s</string>
     <string name="email_identity">Email: %1$s</string>
+    <string name="offline_profile_status">Offline profile</string>
+    <string name="offline_profile_title">Create offline profile</string>
+    <string name="offline_profile_explanation">Your data will stay on this device until you choose to link an online account.</string>
+    <string name="continue_offline_action">Continue offline</string>
+    <string name="sync_data_action">Sync data</string>
+    <string name="connection_restored_title">Internet connection restored</string>
+    <string name="connection_restored_message">Would you like to synchronize your local data with the cloud?</string>
+    <string name="sync_action">Synchronize</string>
+    <string name="later_action">Later</string>
+    <string name="reauthentication_title">Confirm your account</string>
+    <string name="reauthentication_explanation">Log in again before local changes can update cloud data.</string>
+    <string name="continue_action">Continue</string>
+    <string name="sync_confirmation_title">Synchronize data</string>
+    <string name="sync_confirmation_message">Local data from this device will update the cloud. Local changes will be uploaded, and items deleted locally may also be deleted from the cloud and cannot be restored.</string>
+    <string name="confirm_sync_action">Confirm synchronization</string>
+    <string name="syncing_title">Synchronizing…</string>
+    <string name="sync_success_title">Synchronization complete</string>
+    <string name="sync_success_message">Your local changes were uploaded successfully.</string>
+    <string name="sync_error_title">Synchronization failed</string>
+    <string name="sync_error_message">Your local data was not changed. You can try again later.</string>
+    <string name="ok_action">OK</string>
     <string name="save_display_name_action">Save display name</string>
     <string name="display_name_error">Display name %1$s</string>
     <string name="account_action_error">The account action failed. Please try again.</string>
@@ -121,4 +142,7 @@
     <string name="session_expired_error">Your session has expired. Please log in again.</string>
     <string name="network_error">No internet connection</string>
     <string name="authentication_unavailable_error">Authentication is temporarily unavailable</string>
+    <string name="authentication_unavailable_title">Authentication unavailable</string>
+    <string name="authentication_offline_fallback_message">Authentication is currently unavailable. Would you like to continue offline?</string>
+    <string name="local_profile_unavailable_error">No local profile is available for offline use.</string>
 </resources>
