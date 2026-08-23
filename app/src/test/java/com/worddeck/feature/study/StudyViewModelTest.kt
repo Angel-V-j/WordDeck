@@ -12,6 +12,7 @@ import com.worddeck.domain.model.DeckId
 import com.worddeck.domain.model.Flashcard
 import com.worddeck.domain.model.ReviewRating
 import com.worddeck.domain.model.ReviewEvent
+import com.worddeck.domain.model.ReviewActivity
 import com.worddeck.domain.model.ReviewState
 import com.worddeck.domain.model.StudyCard
 import com.worddeck.domain.model.StudySession
@@ -272,6 +273,11 @@ private class RecordingReviewRepository(
         deckId: DeckId,
         timestamp: Timestamp,
     ): Flow<AppResult<StudyProgress>> = flowOf(AppResult.Success(StudyProgress()))
+
+    override fun observeActivity(
+        userId: UserId,
+        timestamp: Timestamp,
+    ): Flow<AppResult<ReviewActivity>> = flowOf(AppResult.Success(ReviewActivity()))
 
     override suspend fun recordReview(
         reviewState: ReviewState,

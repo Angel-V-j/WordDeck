@@ -8,6 +8,7 @@ import com.worddeck.common.Timestamp
 import com.worddeck.domain.model.CardId
 import com.worddeck.domain.model.DeckId
 import com.worddeck.domain.model.ReviewEvent
+import com.worddeck.domain.model.ReviewActivity
 import com.worddeck.domain.model.ReviewState
 import com.worddeck.domain.model.StudyProgress
 import com.worddeck.domain.model.UserId
@@ -30,13 +31,18 @@ class StatisticsViewModelTest {
     @Test
     fun `overall statistics expose populated progress for the current user and time`() = runTest {
         val progress = StudyProgress(2, 3, 4, 1, 5)
-        val repository = FakeProgressRepository(overall = AppResult.Success(progress))
+        val activity = ReviewActivity(2, 4, 9)
+        val repository = FakeProgressRepository(
+            overall = AppResult.Success(progress),
+            activity = AppResult.Success(activity),
+        )
         val viewModel = StatisticsViewModel(repository, USER_ID, Clock { NOW })
 
         advanceUntilIdle()
 
         assertEquals(OperationStatus.SUCCESS, viewModel.uiState.value.status)
         assertEquals(progress, viewModel.uiState.value.progress)
+        assertEquals(activity, viewModel.uiState.value.activity)
         assertEquals(USER_ID, repository.observedUserId)
         assertEquals(NOW, repository.observedTimestamp)
     }
@@ -76,13 +82,18 @@ class StatisticsViewModelTest {
         advanceUntilIdle()
         assertEquals(deckBProgress, deckBViewModel.uiState.value.progress)
         assertEquals(DECK_B, repository.observedDeckId)
+        assertEquals(null, deckBViewModel.uiState.value.activity)
+        assertEquals(0, repository.activityCalls)
     }
 
     @Test
     fun `repository failure is exposed as an error state`() = runTest {
-        val error = AppError.Unavailable("study progress")
+        val error = AppError.Unavailable("review activity")
         val viewModel = StatisticsViewModel(
-            reviewRepository = FakeProgressRepository(overall = AppResult.Failure(error)),
+            reviewRepository = FakeProgressRepository(
+                overall = AppResult.Success(StudyProgress(newCards = 1)),
+                activity = AppResult.Failure(error),
+            ),
             userId = USER_ID,
             clock = Clock { NOW },
         )
@@ -97,12 +108,15 @@ class StatisticsViewModelTest {
 private class FakeProgressRepository(
     private val overall: AppResult<StudyProgress> = AppResult.Success(StudyProgress()),
     private val deckResults: Map<DeckId, AppResult<StudyProgress>> = emptyMap(),
+    private val activity: AppResult<ReviewActivity> = AppResult.Success(ReviewActivity()),
 ) : ReviewRepository {
     var observedUserId: UserId? = null
         private set
     var observedDeckId: DeckId? = null
         private set
     var observedTimestamp: Timestamp? = null
+        private set
+    var activityCalls: Int = 0
         private set
 
     override fun observeProgress(
@@ -123,6 +137,16 @@ private class FakeProgressRepository(
         observedDeckId = deckId
         observedTimestamp = timestamp
         return flowOf(deckResults.getValue(deckId))
+    }
+
+    override fun observeActivity(
+        userId: UserId,
+        timestamp: Timestamp,
+    ): Flow<AppResult<ReviewActivity>> {
+        observedUserId = userId
+        observedTimestamp = timestamp
+        activityCalls += 1
+        return flowOf(activity)
     }
 
     override fun observeStates(userId: UserId): Flow<AppResult<List<ReviewState>>> = unused()

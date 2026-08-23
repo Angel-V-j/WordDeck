@@ -17,6 +17,7 @@ import com.worddeck.domain.model.CardId
 import com.worddeck.domain.model.Deck
 import com.worddeck.domain.model.DeckId
 import com.worddeck.domain.model.Flashcard
+import com.worddeck.domain.model.ReviewActivity
 import com.worddeck.domain.model.ReviewEvent
 import com.worddeck.domain.model.ReviewState
 import com.worddeck.domain.model.StudyProgress
@@ -97,6 +98,18 @@ class LocalReviewRepository(
         .observeProgressByDeck(userId.value, deckId.value, timestamp.epochMilliseconds)
         .asSuccessfulDatabaseResult("study progress")
 
+    override fun observeActivity(
+        userId: UserId,
+        timestamp: Timestamp,
+    ): Flow<AppResult<ReviewActivity>> = database.reviewEventDao()
+        .observeActivity(
+            userId = userId.value,
+            sevenDaysAgo = timestamp.epochMilliseconds - SEVEN_DAYS_IN_MILLIS,
+            thirtyDaysAgo = timestamp.epochMilliseconds - THIRTY_DAYS_IN_MILLIS,
+            timestamp = timestamp.epochMilliseconds,
+        )
+        .asSuccessfulDatabaseResult("review activity")
+
     override suspend fun recordReview(
         reviewState: ReviewState,
         reviewEvent: ReviewEvent,
@@ -131,3 +144,7 @@ private suspend fun databaseWrite(
 
 private fun databaseFailure(resource: String): AppResult.Failure =
     AppResult.Failure(AppError.Unavailable(resource))
+
+private const val DAY_IN_MILLIS = 86_400_000L
+private const val SEVEN_DAYS_IN_MILLIS = 7 * DAY_IN_MILLIS
+private const val THIRTY_DAYS_IN_MILLIS = 30 * DAY_IN_MILLIS

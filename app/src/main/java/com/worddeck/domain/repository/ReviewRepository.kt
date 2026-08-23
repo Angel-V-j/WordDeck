@@ -5,6 +5,7 @@ import com.worddeck.common.Timestamp
 import com.worddeck.domain.model.CardId
 import com.worddeck.domain.model.DeckId
 import com.worddeck.domain.model.ReviewEvent
+import com.worddeck.domain.model.ReviewActivity
 import com.worddeck.domain.model.ReviewState
 import com.worddeck.domain.model.StudyProgress
 import com.worddeck.domain.model.UserId
@@ -28,6 +29,11 @@ interface ReviewRepository {
         deckId: DeckId,
         timestamp: Timestamp,
     ): Flow<AppResult<StudyProgress>>
+
+    fun observeActivity(
+        userId: UserId,
+        timestamp: Timestamp,
+    ): Flow<AppResult<ReviewActivity>>
 
     /** Saves the updated state and its history event as one operation. */
     suspend fun recordReview(

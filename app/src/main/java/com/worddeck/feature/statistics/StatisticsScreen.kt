@@ -17,6 +17,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.worddeck.R
@@ -73,6 +74,27 @@ private fun StatisticsContent(uiState: StatisticsUiState) {
     ProgressItem(R.string.statistics_mastered, progress.masteredCards, progress.totalCards)
     ProgressItem(R.string.statistics_problematic, progress.problematicCards, progress.totalCards)
     ProgressItem(R.string.statistics_due, progress.dueCards, progress.totalCards)
+
+    uiState.activity?.let { activity ->
+        Text(
+            text = stringResource(R.string.statistics_activity_title),
+            style = MaterialTheme.typography.titleLarge,
+        )
+        PeriodItem(R.string.statistics_last_7_days, activity.last7DaysReviews)
+        PeriodItem(R.string.statistics_last_30_days, activity.last30DaysReviews)
+        PeriodItem(R.string.statistics_all_time, activity.allTimeReviews)
+    }
+}
+
+@Composable
+private fun PeriodItem(labelResource: Int, count: Int) {
+    Text(
+        stringResource(
+            R.string.statistics_period_count,
+            stringResource(labelResource),
+            pluralStringResource(R.plurals.statistics_reviews, count, count),
+        ),
+    )
 }
 
 @Composable

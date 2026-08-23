@@ -19,6 +19,7 @@ presentation, domain и data слоевете. В момента работят:
 - SM-2 обновяване с атомарен Room запис на review state и отделен history event;
 - history по карта и summary при край на учебна сесия;
 - общ и deck-scoped statistics UI с mastery/due counts и Material 3 progress indicators;
+- обща review активност за последните 7 дни, 30 дни и целия период;
 - реактивно показване на Room данните чрез `Flow`, включително след restart;
 - адаптивни Compose екрани и автоматизирани unit/Room/Compose тестове.
 
@@ -126,6 +127,8 @@ timestamp отвън и връща следващите repetition, ease factor,
 избира new и due картите за текущ user/deck към подаден timestamp. Reveal/rate
 UI flow-ът работи и пази текущата сесия във ViewModel. Review state и history
 се записват атомарно в Room, а history екранът показва събитията по карта.
+Overall statistics брои `ReviewEvent` записите спрямо един подаден timestamp;
+7- и 30-дневните граници са включващи и се тестват с фиксиран `Clock`.
 
 ## Локална конфигурация и secrets
 
@@ -145,6 +148,5 @@ code или README.
 
 ## Следващи основни стъпки
 
-1. статистика за активността по периоди;
-2. минимална Firestore синхронизация върху Room source of truth;
-3. приемателно тестване и дипломна документация.
+1. минимална Firestore синхронизация върху Room source of truth;
+2. приемателно тестване и дипломна документация.
