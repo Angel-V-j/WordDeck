@@ -54,3 +54,4 @@ ROADMAP.md
 *.zip
 docs/
 tests-archive/
+/app/src/androidTest/

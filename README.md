@@ -1,162 +1,124 @@
 # WordDeck
 
-Firebase Authentication/Firestore development and Emulator setup are described
-in [`FIREBASE_SETUP.md`](FIREBASE_SETUP.md).
+WordDeck е Android приложение за изучаване на чужди езици с учебни карти и
+spaced repetition. Данните се пазят първо локално, така че основните функции
+остават достъпни и без интернет.
 
-WordDeck е Android приложение за изучаване на чужди езици чрез spaced
-repetition. Проектът се разработва постепенно като дипломна работа.
+## Основни функции
 
-## Текущ статус
+- локален offline профил без парола;
+- Firebase регистрация, вход, изход и редактиране на display name;
+- създаване, редактиране, изтриване, търсене и филтриране на тестета;
+- създаване, редактиране, изтриване и търсене на учебни карти;
+- flashcard режим с `Again`, `Hard`, `Good` и `Easy`;
+- typed-answer режим с проверка без значение на главни/малки букви и околни
+  интервали;
+- SM-2 планиране на следващия преговор;
+- история на преговорите и обобщение на учебната сесия;
+- обща статистика и статистика по тесте;
+- изрично стартирана синхронизация с Firestore между устройства.
 
-Проектът е един Gradle application module (`:app`) с Kotlin packages за
-presentation, domain и data слоевете. В момента работят:
+## Технологии
 
-- online регистрация/вход и локален offline профил без съхранена парола;
-- локално създаване, редактиране, изтриване, търсене и филтриране на тестета;
-- локално създаване, редактиране, изтриване и търсене на карти;
-- flashcard study flow с reveal и `Again / Hard / Good / Easy` оценяване;
-- typed-answer режим с точно сравнение след `trim` и игнориране на главни/малки букви;
-- SM-2 обновяване с атомарен Room запис на review state и отделен history event;
-- history по карта и summary при край на учебна сесия;
-- общ и deck-scoped statistics UI с mastery/due counts и Material 3 progress indicators;
-- обща review активност за последните 7 дни, 30 дни и целия период;
-- реактивно показване на Room данните чрез `Flow`, включително след restart;
-- Room-first Firestore sync с tombstones, стартиран изрично от потребителя;
-- възпроизводим multi-device acceptance сценарий, проверен с два емулатора;
-- адаптивни Compose екрани и автоматизирани unit/Room/Compose тестове.
+- Kotlin и Kotlin Coroutines/Flow;
+- Jetpack Compose, Material 3 и Navigation Compose;
+- MVVM и Repository pattern;
+- Room като локален source of truth;
+- Firebase Authentication и Cloud Firestore;
+- Gradle Kotlin DSL и KSP;
+- JUnit за unit tests.
 
-Firebase Authentication и Room са скрити зад малки repository interfaces, а
-production зависимостите се създават в manual `AppContainer`. На този етап
-умишлено няма:
-
-- periodic sync service, real-time Firestore listener или generic sync engine;
-- production Firebase configuration или credentials;
-- dependency injection framework.
-
-## Структура
+Проектът е един Gradle application module (`:app`). Обичайният CRUD поток е:
 
 ```text
-app/src/main/java/com/worddeck/
-├── common/                 # AppResult, Clock, IdGenerator, OperationStatus
-├── core/
-│   └── AppContainer.kt
-├── data/
-│   ├── local/
-│   │   ├── database/
-│   │   ├── dao/
-│   │   ├── entity/
-│   │   └── mapper/
-│   ├── remote/
-│   │   └── firebase/
-│   │       └── Firebase Auth и Firestore remote adapter-и
-│   ├── repository/
-│   └── sync/
-│       └── един SyncCoordinator
-├── domain/
-│   ├── model/
-│   │   └── User, Deck, Flashcard и review модели/value classes
-│   └── repository/
-│       ├── AuthenticationRepository.kt
-│       ├── DeckRepository.kt
-│       ├── FlashcardRepository.kt
-│       └── ReviewRepository.kt
-├── feature/
-│   ├── auth/
-│   ├── home/               # owner deck list и deck details
-│   ├── decks/              # deck/card forms и ViewModel-и
-│   ├── study/              # study modes, SM-2 review flow и history UI
-│   └── statistics/         # общ и deck-scoped progress UI
-├── navigation/
-│   └── AppNavigation.kt
-├── ui/
-│   └── theme/
-│       ├── Color.kt
-│       └── Theme.kt
-├── MainActivity.kt
-├── WordDeckApp.kt
-└── WordDeckApplication.kt
+Compose UI → ViewModel → Repository → Room
 ```
 
-Нови packages се добавят едва когато имат реален consumer; не използваме
-`.gitkeep` или фиктивни класове за планирана функционалност.
+SM-2 логиката е отделена от Android и получава текущото време отвън, което я
+прави детерминистична и лесна за unit testing. Firebase не се използва директно
+от UI; синхронизацията обменя данни с Room, а интерфейсът продължава да наблюдава
+локалната база.
 
-## Отговорности
+## Изисквания
 
-- `feature/` съдържа Compose UI, feature-specific UiState и ViewModel-и.
-- `domain/model/` съдържа platform-independent модели.
-- `domain/repository/` съдържа само абстракциите, които feature слоят може да
-  използва. Те не знаят за Room или Firebase.
-- `data/local/` съдържа текущия Room source of truth.
-- `data/remote/firebase/` съдържа Firebase Authentication adapter-а и
-  primitive-only Firestore DTO/mapper-и и concrete remote sync adapter.
-- `data/repository/` съдържа тънките Room repository implementations.
-- `data/sync/` съдържа един upload/download coordinator. UI продължава да
-  чете само Room, а cloud upload се стартира след изрично действие.
-- `common/` съдържа само малки общи типове; `core/` съдържа composition root-а.
-- `navigation/` съдържа централния Navigation Compose graph.
-- `ui/` съдържа Material 3 theme.
+- Android Studio с JDK 17 или по-нова поддържана версия;
+- Android SDK 36.1;
+- Android emulator или устройство с Android 8.0 (API 26) или по-нова версия;
+- Node.js и Firebase CLI само за online authentication/sync през локалните
+  Firebase Emulators.
 
-## Посока на зависимостите
+## Basic build/run
 
-Текущият CRUD поток е:
+1. Клонирайте repository-то и отворете root директорията в Android Studio.
+2. Създайте локалния Firebase configuration файл от tracked placeholder-а:
 
-```text
-Compose UI
-    ↓
-ViewModel
-    ↓
-Repository abstraction
-    ↓
-Room source of truth
-```
+   ```powershell
+   Copy-Item .\app\google-services.example.json .\app\google-services.json
+   ```
 
-UseCase се добавя само за координирана бизнес операция. Review flow минава през
-`Compose → ViewModel → ReviewFlashcardUseCase`, който координира SM-2 и
-атомарното записване на state/event през repository в Room. Firestore
-синхронизира pending Room данните, без да се използва директно от UI.
+3. Изчакайте Gradle sync. Android Studio ще създаде локалния `local.properties`
+   с пътя към Android SDK.
+4. Изберете emulator/device с API 26+ и стартирайте `app` configuration.
 
-`domain` не трябва да зависи от Android, Compose, Room или Firebase. При
-липса на интернет UI трябва да продължи да работи през repository и Room.
-Firebase синхронизира cloud данните, без UI да го използва директно.
-Един активен локален профил се пази в `SharedPreferences`; там няма парола или
-Firebase credentials. При свързване на нов account локалните данни се качват
-като source of truth. Вече свързан профил изисква повторен Firebase login и
-потвърждение преди локалните промени да актуализират cloud данните.
-
-## Spaced repetition
-
-Scheduler-ът е чист Kotlin код, отделен от Android, Room и Firebase, и се
-unit-test-ва независимо. Старият custom scheduler не е пренесен. Domain слоят
-дефинира валидирана SM-2 quality `0..5`,
-начални `repetition = 0`, `easeFactor = 2.5` и `intervalDays = 0`, minimum ease
-factor `1.3`, reset при quality под `3`, първи интервали `1 / 6` дни и mapping
-`Again / Hard / Good / Easy` към `0 / 3 / 4 / 5`. Алгоритъмът получава review
-timestamp отвън и връща следващите repetition, ease factor, interval и review
-дата. При всеки review се актуализират success/failure counters и се определя
-`NEW`, `LEARNING`, `MASTERED` или `PROBLEMATIC` ниво. Чиста domain функция
-избира new и due картите за текущ user/deck към подаден timestamp. Reveal/rate
-UI flow-ът работи и пази текущата сесия във ViewModel. Review state и history
-се записват атомарно в Room, а history екранът показва събитията по карта.
-Overall statistics брои `ReviewEvent` записите спрямо един подаден timestamp;
-7- и 30-дневните граници са включващи и се тестват с фиксиран `Clock`.
-
-## Локална конфигурация и secrets
-
-`local.properties` се създава локално от Android Studio и е игнориран.
-`app/google-services.json` също се добавя само локално според
-[`FIREBASE_SETUP.md`](FIREBASE_SETUP.md). Не записвайте API keys, private keys,
-passwords, tokens, signing stores или service-account credentials в source
-code или README.
-
-## Build
-
-От root директорията на проекта:
+Debug APK може да бъде построен и от PowerShell в root директорията:
 
 ```powershell
-.\gradlew.bat test assembleDebug --no-configuration-cache
+.\gradlew.bat assembleDebug --no-configuration-cache
 ```
 
-## Следващи основни стъпки
+Clean clone не може да се build-не, преди локално да бъде добавен
+`app/google-services.json`. Файлът и `local.properties` са игнорирани от Git.
+Tracked example конфигурацията съдържа само placeholder стойности за локалния
+demo проект.
 
-1. финално функционално, UI и usability тестване;
-2. дипломна документация и release APK.
+## Firebase configuration
+
+Debug build-ът използва Firebase Authentication и Firestore Emulators на
+development компютъра. От root директорията стартирайте:
+
+```powershell
+npx firebase-tools emulators:start --only "auth,firestore" --project demo-worddeck
+```
+
+След това стартирайте приложението на Android emulator. Debug кодът използва
+`10.0.2.2:9099` за Authentication и `10.0.2.2:8080` за Firestore; `10.0.2.2`
+сочи към development компютъра само от Android emulator.
+
+За собствен Firebase project изтеглете неговия `google-services.json` от
+Firebase Console и го поставете локално в `app/`. Не commit-вайте този файл,
+пароли, tokens, service-account файлове, private keys или signing material.
+Допълнителни emulator инструкции има във
+[`FIREBASE_SETUP.md`](FIREBASE_SETUP.md).
+
+Основните локални функции работят и без стартирани Firebase Emulators чрез
+offline profile flow-а.
+
+## Базова употреба
+
+1. Създайте offline профил или се регистрирайте/влезте чрез Firebase.
+2. Създайте тесте и добавете карти с лицева и обратна страна.
+3. Стартирайте учебна сесия във flashcard или typed-answer режим.
+4. Преглеждайте history и statistics от съответните екрани.
+5. При linked profile стартирайте синхронизацията изрично от Profile екрана.
+
+## Unit tests
+
+Unit test suite-ът се намира в `app/src/test/` и се изпълнява с:
+
+```powershell
+.\gradlew.bat testDebugUnitTest --no-configuration-cache
+```
+
+За допълнителна локална проверка:
+
+```powershell
+.\gradlew.bat lintDebug assembleDebug --no-configuration-cache
+```
+
+## Release
+
+Текущата Gradle конфигурация е с `versionName = 1.0` и `versionCode = 1`.
+
+Локално генерираният `WordDeck-1.0-release.apk` е междинен release candidate и
+не представя окончателния source state.
+от окончателния commit.
