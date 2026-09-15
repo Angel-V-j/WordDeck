@@ -150,7 +150,6 @@ object Sm2Scheduler {
             failedReviewCount = newFailedReviewCount,
             lastQuality = input.quality,
         )
-
         val nextReviewAt = Timestamp(
             reviewedAt.epochMilliseconds +
                 newIntervalDays.toLong() * MILLISECONDS_PER_DAY,

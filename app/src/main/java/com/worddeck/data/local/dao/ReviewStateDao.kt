@@ -82,10 +82,13 @@ interface ReviewStateDao {
           COUNT(CASE WHEN review_states.cardId IS NULL
                            OR review_states.nextReviewAt <= :timestamp THEN 1 END) AS dueCards
         FROM flashcards
+        INNER JOIN decks ON decks.id = flashcards.deckId
         LEFT JOIN review_states
           ON review_states.cardId = flashcards.id
          AND review_states.userId = :userId
         WHERE flashcards.deckId = :deckId
+          AND decks.ownerId = :userId
+          AND decks.deletedAt IS NULL
           AND flashcards.deletedAt IS NULL
         """,
     )

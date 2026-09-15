@@ -79,7 +79,7 @@ class SyncViewModel(
 
     fun requestSync() {
         val user = currentUser ?: return
-        if (_uiState.value.networkAvailable != true) {
+        if (_uiState.value.networkAvailable == false) {
             _uiState.value = _uiState.value.copy(
                 step = SyncStep.ERROR,
                 error = AppError.NetworkUnavailable,

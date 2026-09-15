@@ -2,7 +2,6 @@ package com.worddeck.domain.model
 
 import com.worddeck.common.Timestamp
 
-/** Controls public-catalog discoverability, not future classroom membership. */
 enum class DeckVisibility {
     PRIVATE,
     PUBLIC,
