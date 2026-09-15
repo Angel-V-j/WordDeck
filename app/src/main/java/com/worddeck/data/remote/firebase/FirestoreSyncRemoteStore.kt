@@ -123,8 +123,23 @@ internal class FirestoreSyncRemoteStore(
         .await()
         .documents
         .map { document ->
-            document.toObject(type)
-                ?: throw IllegalArgumentException("Invalid Firestore document")
+            // Firestore's mapper can throw RuntimeException for an unexpected field type.
+            // Convert only deserialization failures, not coroutine cancellation or server errors.
+            val value = try {
+                document.toObject(type)
+                    ?: throw IllegalArgumentException("Invalid Firestore document")
+            } catch (error: RuntimeException) {
+                throw IllegalArgumentException("Invalid Firestore document", error)
+            }
+            val storedId = when (value) {
+                is DeckDto -> value.id
+                is FlashcardDto -> value.id
+                is ReviewStateDto -> value.cardId
+                is ReviewEventDto -> value.id
+                else -> throw IllegalArgumentException("Unsupported Firestore document")
+            }
+            require(storedId == document.id) { "Document id does not match its data" }
+            value
         }
 
     private fun document(

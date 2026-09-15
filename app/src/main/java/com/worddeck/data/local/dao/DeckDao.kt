@@ -8,6 +8,9 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface DeckDao {
+    @Query("DELETE FROM decks WHERE ownerId = :ownerId")
+    suspend fun deleteByOwner(ownerId: String)
+
     @Upsert
     suspend fun save(deck: DeckEntity)
 

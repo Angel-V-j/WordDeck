@@ -24,6 +24,28 @@ class AuthViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     @Test
+    fun `confirm password must be present and match exactly before registration`() = runTest {
+        val repository = FakeAuthenticationRepository()
+        val viewModel = AuthViewModel(repository)
+        advanceUntilIdle()
+
+        for (confirmation in listOf("", "SECRET1", " secret1", "secret1 ")) {
+            viewModel.register("Maria", "maria@example.com", "secret1", confirmation)
+            advanceUntilIdle()
+            assertEquals(0, repository.registerCalls)
+            assertEquals(
+                if (confirmation.isEmpty()) "must not be blank" else "must match password",
+                viewModel.uiState.value.formErrors.confirmPassword,
+            )
+        }
+
+        viewModel.register("Maria", "maria@example.com", "secret1", "secret1")
+        advanceUntilIdle()
+        assertEquals(1, repository.registerCalls)
+        assertEquals(null, viewModel.uiState.value.formErrors.confirmPassword)
+    }
+
+    @Test
     fun `restores the current session from the repository`() = runTest {
         val expectedUser = user()
         val viewModel = AuthViewModel(
@@ -47,7 +69,7 @@ class AuthViewModelTest {
         assertEquals("must not be blank", viewModel.uiState.value.formErrors.password)
         assertEquals(0, repository.loginCalls)
 
-        viewModel.register(" ", "maria@example.com", "123")
+        viewModel.register(" ", "maria@example.com", "123", "123")
         assertEquals("must not be blank", viewModel.uiState.value.formErrors.displayName)
         assertEquals("must be at least 6 characters", viewModel.uiState.value.formErrors.password)
         assertEquals(0, repository.registerCalls)
@@ -104,7 +126,7 @@ class AuthViewModelTest {
         )
         advanceUntilIdle()
 
-        viewModel.register("Maria", "maria@example.com", "secret1")
+        viewModel.register("Maria", "maria@example.com", "secret1", "secret1")
         advanceUntilIdle()
 
         assertEquals(null, synchronizedUser)
@@ -136,7 +158,7 @@ class AuthViewModelTest {
         )
         advanceUntilIdle()
 
-        viewModel.register("Angel", "angel@example.com", "secret1")
+        viewModel.register("Angel", "angel@example.com", "secret1", "secret1")
         advanceUntilIdle()
 
         assertEquals(AuthFallback.REGISTRATION, viewModel.uiState.value.offlineFallback)
@@ -161,7 +183,7 @@ class AuthViewModelTest {
         val viewModel = AuthViewModel(repository)
         advanceUntilIdle()
 
-        viewModel.register("Angel", "angel@example.com", "secret1")
+        viewModel.register("Angel", "angel@example.com", "secret1", "secret1")
         advanceUntilIdle()
         viewModel.dismissOfflineFallback()
 

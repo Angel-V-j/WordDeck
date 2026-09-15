@@ -1,5 +1,6 @@
 package com.worddeck.feature.auth
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -88,7 +89,7 @@ fun LoginScreen(
 @Composable
 fun RegisterScreen(
     uiState: AuthUiState,
-    onRegister: (displayName: String, email: String, password: String) -> Unit,
+    onRegister: (displayName: String, email: String, password: String, confirmPassword: String) -> Unit,
     onOpenLogin: () -> Unit,
     modifier: Modifier = Modifier,
     initialDisplayName: String = "",
@@ -100,6 +101,7 @@ fun RegisterScreen(
     }
     var email by rememberSaveable { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
 
     AuthenticationForm(
         title = stringResource(R.string.register_title),
@@ -129,10 +131,18 @@ fun RegisterScreen(
             enabled = !isSubmitting,
             isPassword = true,
         )
+        AuthenticationTextField(
+            value = confirmPassword,
+            onValueChange = { confirmPassword = it },
+            label = stringResource(R.string.confirm_password_label),
+            errorReason = uiState.formErrors.confirmPassword,
+            enabled = !isSubmitting,
+            isPassword = true,
+        )
         SubmitButton(
             text = stringResource(R.string.register_action),
             isLoading = isSubmitting,
-            onClick = { onRegister(displayName, email, password) },
+            onClick = { onRegister(displayName, email, password, confirmPassword) },
         )
         TextButton(
             onClick = onCancel ?: onOpenLogin,
@@ -207,7 +217,7 @@ fun SyncFlow(
     syncUiState: SyncUiState,
     authUiState: AuthUiState,
     user: User?,
-    onRegister: (displayName: String, email: String, password: String) -> Unit,
+    onRegister: (displayName: String, email: String, password: String, confirmPassword: String) -> Unit,
     onReauthenticate: (email: String, password: String) -> Unit,
     onAcceptOffer: () -> Unit,
     onPostpone: () -> Unit,
@@ -215,6 +225,15 @@ fun SyncFlow(
     onCancel: () -> Unit,
     onClearAuthErrors: () -> Unit,
 ) {
+    // Keep the underlying editor/session inaccessible while a cloud operation is open.
+    BackHandler(enabled = syncUiState.step != SyncStep.IDLE) {
+        if (syncUiState.operationStatus != OperationStatus.LOADING &&
+            authUiState.submitStatus != OperationStatus.LOADING
+        ) {
+            onCancel()
+        }
+    }
+    val isDownload = syncUiState.direction == SyncDirection.DOWNLOAD
     when (syncUiState.step) {
         SyncStep.IDLE -> Unit
         SyncStep.OFFER -> SyncOfferDialog(
@@ -244,18 +263,23 @@ fun SyncFlow(
             )
         }
         SyncStep.CONFIRMATION -> SyncConfirmationDialog(
+            isDownload = isDownload,
             onConfirm = onConfirm,
             onCancel = onCancel,
         )
         SyncStep.SYNCING -> SyncProgressDialog()
         SyncStep.SUCCESS -> SyncResultDialog(
             title = stringResource(R.string.sync_success_title),
-            message = stringResource(R.string.sync_success_message),
+            message = stringResource(
+                if (isDownload) R.string.download_success_message else R.string.sync_success_message,
+            ),
             onDismiss = onCancel,
         )
         SyncStep.ERROR -> SyncResultDialog(
             title = stringResource(R.string.sync_error_title),
-            message = syncUiState.error?.let { authenticationErrorMessage(it) }
+            message = if (syncUiState.error is AppError.Unavailable) {
+                stringResource(R.string.sync_error_message)
+            } else syncUiState.error?.let { authenticationErrorMessage(it) }
                 ?: stringResource(R.string.sync_error_message),
             onDismiss = onCancel,
         )
@@ -321,14 +345,21 @@ private fun SyncOfferDialog(onSync: () -> Unit, onLater: () -> Unit) {
 }
 
 @Composable
-private fun SyncConfirmationDialog(onConfirm: () -> Unit, onCancel: () -> Unit) {
+private fun SyncConfirmationDialog(
+    isDownload: Boolean,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    val title = if (isDownload) R.string.download_confirmation_title else R.string.sync_confirmation_title
+    val message = if (isDownload) R.string.download_confirmation_message else R.string.sync_confirmation_message
+    val action = if (isDownload) R.string.confirm_download_action else R.string.confirm_sync_action
     AlertDialog(
         onDismissRequest = onCancel,
-        title = { Text(stringResource(R.string.sync_confirmation_title)) },
-        text = { Text(stringResource(R.string.sync_confirmation_message)) },
+        title = { Text(stringResource(title)) },
+        text = { Text(stringResource(message)) },
         confirmButton = {
             TextButton(onClick = onConfirm) {
-                Text(stringResource(R.string.confirm_sync_action))
+                Text(stringResource(action))
             }
         },
         dismissButton = {

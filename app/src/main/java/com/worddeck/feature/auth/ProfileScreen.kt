@@ -37,6 +37,7 @@ fun ProfileScreen(
     error: AppError?,
     onUpdateDisplayName: (String) -> Unit,
     onSync: () -> Unit,
+    onDownload: () -> Unit,
     onLogout: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
@@ -106,6 +107,16 @@ fun ProfileScreen(
                 enabled = !isSubmitting,
             ) {
                 Text(stringResource(R.string.sync_data_action))
+            }
+            OutlinedButton(
+                onClick = onDownload,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !isSubmitting && user.isLinked,
+            ) {
+                Text(stringResource(R.string.download_data_action))
+            }
+            if (!user.isLinked) {
+                Text(stringResource(R.string.link_before_download_message))
             }
             if (error != null) {
                 Text(

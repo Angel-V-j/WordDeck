@@ -21,6 +21,7 @@ data class AuthFormErrors(
     val displayName: String? = null,
     val email: String? = null,
     val password: String? = null,
+    val confirmPassword: String? = null,
 )
 
 enum class AuthFallback {
@@ -118,7 +119,7 @@ class AuthViewModel(
         submit { authenticationRepository.createOfflineProfile(validDisplayName) }
     }
 
-    fun register(displayName: String, email: String, password: String) {
+    fun register(displayName: String, email: String, password: String, confirmPassword: String) {
         if (_uiState.value.submitStatus == OperationStatus.LOADING) return
 
         val displayNameResult = DisplayName.from(displayName)
@@ -127,6 +128,11 @@ class AuthViewModel(
             displayName = displayNameResult.validationReason(),
             email = emailResult.validationReason(),
             password = password.registrationPasswordReason(),
+            confirmPassword = when {
+                confirmPassword.isEmpty() -> "must not be blank"
+                confirmPassword != password -> "must match password"
+                else -> null
+            },
         )
         if (formErrors.hasErrors()) {
             showFormErrors(formErrors)
@@ -345,7 +351,7 @@ internal fun AppError.asAuthenticationError(networkAvailable: Boolean): AppError
     }
 
 private fun AuthFormErrors.hasErrors(): Boolean =
-    displayName != null || email != null || password != null
+    displayName != null || email != null || password != null || confirmPassword != null
 
 private fun AppError.Validation.toFormErrors(): AuthFormErrors? = when (field) {
     "display name" -> AuthFormErrors(displayName = reason)

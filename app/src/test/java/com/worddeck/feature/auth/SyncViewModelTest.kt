@@ -26,7 +26,7 @@ class SyncViewModelTest {
     fun `network recovery offers sync but does not start it automatically`() = runTest {
         val network = MutableStateFlow(false)
         var syncCalls = 0
-        val viewModel = SyncViewModel(FakeAuthRepository(), network) {
+        val viewModel = SyncViewModel(FakeAuthRepository(), network, downloadCloudData = { AppResult.Success(Unit) }) {
             syncCalls += 1
             AppResult.Success(Unit)
         }
@@ -46,7 +46,7 @@ class SyncViewModelTest {
     @Test
     fun `local profile is sent to registration and syncs only after account linking`() = runTest {
         var syncedUser: User? = null
-        val viewModel = SyncViewModel(FakeAuthRepository(), MutableStateFlow(true)) { user ->
+        val viewModel = SyncViewModel(FakeAuthRepository(), MutableStateFlow(true), downloadCloudData = { AppResult.Success(Unit) }) { user ->
             syncedUser = user
             AppResult.Success(Unit)
         }
@@ -69,7 +69,7 @@ class SyncViewModelTest {
     fun `linked profile authenticates before confirmation and cancellation does not sync`() = runTest {
         val auth = FakeAuthRepository()
         var syncCalls = 0
-        val viewModel = SyncViewModel(auth, MutableStateFlow(true)) {
+        val viewModel = SyncViewModel(auth, MutableStateFlow(true), downloadCloudData = { AppResult.Success(Unit) }) {
             syncCalls += 1
             AppResult.Success(Unit)
         }
@@ -94,7 +94,7 @@ class SyncViewModelTest {
             reauthenticateResult = AppResult.Failure(AppError.Authentication.InvalidCredentials),
         )
         var syncCalls = 0
-        val viewModel = SyncViewModel(auth, MutableStateFlow(true)) {
+        val viewModel = SyncViewModel(auth, MutableStateFlow(true), downloadCloudData = { AppResult.Success(Unit) }) {
             syncCalls += 1
             AppResult.Failure(AppError.NetworkUnavailable)
         }
@@ -125,7 +125,7 @@ class SyncViewModelTest {
             reauthenticateResult = AppResult.Failure(AppError.NetworkUnavailable),
         )
         var syncCalls = 0
-        val viewModel = SyncViewModel(auth, MutableStateFlow(true)) {
+        val viewModel = SyncViewModel(auth, MutableStateFlow(true), downloadCloudData = { AppResult.Success(Unit) }) {
             syncCalls += 1
             AppResult.Success(Unit)
         }
@@ -140,6 +140,118 @@ class SyncViewModelTest {
         assertEquals(AppError.Unavailable("authentication"), viewModel.uiState.value.error)
         assertEquals(0, syncCalls)
     }
+    @Test
+    fun `download requires authentication and confirmation and cannot also upload`() = runTest {
+        val auth = FakeAuthRepository()
+        var downloads = 0
+        var uploads = 0
+        val completion = kotlinx.coroutines.CompletableDeferred<AppResult<Unit>>()
+        val viewModel = SyncViewModel(
+            auth,
+            MutableStateFlow(true),
+            downloadCloudData = {
+                downloads++
+                completion.await()
+            },
+            uploadLocalChanges = {
+                uploads++
+                AppResult.Success(Unit)
+            },
+        )
+        viewModel.updateUser(linkedUser())
+        advanceUntilIdle()
+
+        viewModel.requestDownload()
+        viewModel.confirm()
+        assertEquals(0, downloads)
+        assertEquals(SyncStep.REAUTHENTICATION, viewModel.uiState.value.step)
+        viewModel.reauthenticate("maria@example.com", "test-password")
+        advanceUntilIdle()
+        assertEquals(SyncStep.CONFIRMATION, viewModel.uiState.value.step)
+        viewModel.cancel()
+        assertEquals(0, downloads)
+
+        viewModel.requestDownload()
+        viewModel.reauthenticate("maria@example.com", "test-password")
+        advanceUntilIdle()
+        viewModel.confirm()
+        advanceUntilIdle()
+        viewModel.confirm()
+        viewModel.requestSync()
+        viewModel.requestDownload()
+        viewModel.cancel()
+        assertEquals(SyncStep.SYNCING, viewModel.uiState.value.step)
+        assertEquals(1, downloads)
+        assertEquals(0, uploads)
+
+        completion.complete(AppResult.Success(Unit))
+        advanceUntilIdle()
+        assertEquals(SyncStep.SUCCESS, viewModel.uiState.value.step)
+        assertEquals(SyncDirection.DOWNLOAD, viewModel.uiState.value.direction)
+    }
+
+    @Test
+    fun `download rejects local only offline and failed authentication`() = runTest {
+        val auth = FakeAuthRepository(
+            reauthenticateResult = AppResult.Failure(AppError.Authentication.InvalidCredentials),
+        )
+        val network = MutableStateFlow(true)
+        var downloads = 0
+        val viewModel = SyncViewModel(
+            auth, network,
+            downloadCloudData = { downloads++; AppResult.Success(Unit) },
+            uploadLocalChanges = { AppResult.Success(Unit) },
+        )
+        advanceUntilIdle()
+        viewModel.updateUser(localUser())
+        viewModel.requestDownload()
+        assertEquals(SyncStep.ERROR, viewModel.uiState.value.step)
+        assertEquals(0, auth.reauthenticateCalls)
+
+        viewModel.cancel()
+        viewModel.updateUser(linkedUser())
+        network.value = false
+        advanceUntilIdle()
+        viewModel.requestDownload()
+        assertEquals(AppError.NetworkUnavailable, viewModel.uiState.value.error)
+
+        viewModel.cancel()
+        network.value = true
+        advanceUntilIdle()
+        viewModel.requestDownload()
+        viewModel.reauthenticate("maria@example.com", "test-password")
+        advanceUntilIdle()
+        viewModel.confirm()
+        assertEquals(AppError.Authentication.InvalidCredentials, viewModel.uiState.value.error)
+        assertEquals(0, downloads)
+    }
+
+    @Test
+    fun `failed download stays retryable and changing user invalidates confirmation`() = runTest {
+        var downloads = 0
+        val viewModel = SyncViewModel(
+            FakeAuthRepository(), MutableStateFlow(true),
+            downloadCloudData = { downloads++; AppResult.Failure(AppError.Unavailable("synchronization")) },
+            uploadLocalChanges = { AppResult.Success(Unit) },
+        )
+        viewModel.updateUser(linkedUser())
+        advanceUntilIdle()
+        viewModel.requestDownload()
+        viewModel.reauthenticate("maria@example.com", "test-password")
+        advanceUntilIdle()
+        viewModel.updateUser(linkedUser(UserId.from("different-local-user").successValue()))
+        viewModel.confirm()
+        assertEquals(0, downloads)
+
+        viewModel.requestDownload()
+        viewModel.reauthenticate("maria@example.com", "test-password")
+        advanceUntilIdle()
+        viewModel.confirm()
+        advanceUntilIdle()
+        assertEquals(1, downloads)
+        assertEquals(SyncStep.ERROR, viewModel.uiState.value.step)
+    }
+
 }
 
 private class FakeAuthRepository(

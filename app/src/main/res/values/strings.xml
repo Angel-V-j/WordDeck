@@ -117,13 +117,13 @@
     <string name="offline_profile_title">Create offline profile</string>
     <string name="offline_profile_explanation">Your data will stay on this device until you choose to link an online account.</string>
     <string name="continue_offline_action">Continue offline</string>
-    <string name="sync_data_action">Sync data</string>
+    <string name="sync_data_action">Upload to cloud</string>
     <string name="connection_restored_title">Internet connection restored</string>
     <string name="connection_restored_message">Would you like to synchronize your local data with the cloud?</string>
     <string name="sync_action">Synchronize</string>
     <string name="later_action">Later</string>
     <string name="reauthentication_title">Confirm your account</string>
-    <string name="reauthentication_explanation">Log in again before local changes can update cloud data.</string>
+    <string name="reauthentication_explanation">Log in with the linked account to continue.</string>
     <string name="continue_action">Continue</string>
     <string name="sync_confirmation_title">Synchronize data</string>
     <string name="sync_confirmation_message">Local data from this device will update the cloud. Local changes will be uploaded, and items deleted locally may also be deleted from the cloud and cannot be restored.</string>
@@ -145,4 +145,11 @@
     <string name="authentication_unavailable_title">Authentication unavailable</string>
     <string name="authentication_offline_fallback_message">Authentication is currently unavailable. Would you like to continue offline?</string>
     <string name="local_profile_unavailable_error">No local profile is available for offline use.</string>
+    <string name="confirm_password_label">Confirm password</string>
+    <string name="download_data_action">Download from cloud</string>
+    <string name="link_before_download_message">Link a cloud account using Upload to cloud before downloading.</string>
+    <string name="download_confirmation_title">Download from cloud?</string>
+    <string name="download_confirmation_message">Cloud data will replace the decks, cards and review progress stored on this device for this profile. Local changes that have not been uploaded will be lost. Items missing from the cloud will be removed from this device. Cloud data will not be changed.</string>
+    <string name="confirm_download_action">Download and replace</string>
+    <string name="download_success_message">Cloud data was downloaded successfully.</string>
 </resources>

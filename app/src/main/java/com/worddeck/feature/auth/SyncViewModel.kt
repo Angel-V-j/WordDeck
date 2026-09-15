@@ -13,6 +13,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
+
+enum class SyncDirection { UPLOAD, DOWNLOAD }
 
 enum class SyncStep {
     IDLE,
@@ -27,6 +30,7 @@ enum class SyncStep {
 
 data class SyncUiState(
     val step: SyncStep = SyncStep.IDLE,
+    val direction: SyncDirection = SyncDirection.UPLOAD,
     val networkAvailable: Boolean? = null,
     val operationStatus: OperationStatus = OperationStatus.IDLE,
     val emailError: String? = null,
@@ -37,12 +41,14 @@ data class SyncUiState(
 class SyncViewModel(
     private val authenticationRepository: AuthenticationRepository,
     networkAvailability: Flow<Boolean>,
+    private val downloadCloudData: suspend (User) -> AppResult<Unit>,
     private val uploadLocalChanges: suspend (User) -> AppResult<Unit>,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(SyncUiState())
     val uiState: StateFlow<SyncUiState> = _uiState.asStateFlow()
 
     private var currentUser: User? = null
+    private var operationJob: Job? = null
     private var previousNetworkAvailability: Boolean? = null
 
     init {
@@ -66,19 +72,40 @@ class SyncViewModel(
 
     fun updateUser(user: User?) {
         val wasWaitingForRegistration = _uiState.value.step == SyncStep.REGISTRATION
+        val previousUser = currentUser
         currentUser = user
+        if (previousUser?.id != user?.id ||
+            (previousUser?.firebaseUid != user?.firebaseUid && !wasWaitingForRegistration)
+        ) {
+            operationJob?.cancel()
+            reset()
+        }
 
         if (user == null) {
             _uiState.value = SyncUiState(
                 networkAvailable = _uiState.value.networkAvailable,
             )
-        } else if (wasWaitingForRegistration && user.isLinked) {
-            startUpload(user)
+        } else if (wasWaitingForRegistration && previousUser?.id == user.id && user.isLinked) {
+            startTransfer(user)
         }
     }
 
-    fun requestSync() {
+    fun requestSync() = requestTransfer(SyncDirection.UPLOAD)
+
+    fun requestDownload() = requestTransfer(SyncDirection.DOWNLOAD)
+
+    private fun requestTransfer(direction: SyncDirection) {
+        if (_uiState.value.operationStatus == OperationStatus.LOADING) return
+        if (_uiState.value.step !in listOf(SyncStep.IDLE, SyncStep.OFFER)) return
         val user = currentUser ?: return
+        _uiState.value = _uiState.value.copy(direction = direction)
+        if (direction == SyncDirection.DOWNLOAD && !user.isLinked) {
+            _uiState.value = _uiState.value.copy(
+                step = SyncStep.ERROR,
+                error = AppError.Validation("cloud account", "Link an account before downloading."),
+            )
+            return
+        }
         if (_uiState.value.networkAvailable == false) {
             _uiState.value = _uiState.value.copy(
                 step = SyncStep.ERROR,
@@ -132,7 +159,7 @@ class SyncViewModel(
             passwordError = null,
             error = null,
         )
-        viewModelScope.launch {
+        operationJob = viewModelScope.launch {
             when (val result = authenticationRepository.reauthenticate(validEmail, password)) {
                 is AppResult.Success -> _uiState.value = _uiState.value.copy(
                     step = SyncStep.CONFIRMATION,
@@ -150,22 +177,30 @@ class SyncViewModel(
 
     fun confirm() {
         if (_uiState.value.step != SyncStep.CONFIRMATION) return
-        currentUser?.let(::startUpload)
+        currentUser?.let(::startTransfer)
     }
 
     fun cancel() {
+        if (_uiState.value.operationStatus == OperationStatus.LOADING) return
         reset()
     }
 
-    private fun startUpload(user: User) {
+    private fun startTransfer(user: User) {
         if (!user.isLinked) return
+        if (_uiState.value.operationStatus == OperationStatus.LOADING) return
+        val direction = _uiState.value.direction
         _uiState.value = _uiState.value.copy(
             step = SyncStep.SYNCING,
             operationStatus = OperationStatus.LOADING,
             error = null,
         )
-        viewModelScope.launch {
-            when (val result = uploadLocalChanges(user)) {
+        operationJob = viewModelScope.launch {
+            val result = if (direction == SyncDirection.DOWNLOAD) {
+                downloadCloudData(user)
+            } else {
+                uploadLocalChanges(user)
+            }
+            when (result) {
                 is AppResult.Success -> _uiState.value = _uiState.value.copy(
                     step = SyncStep.SUCCESS,
                     operationStatus = OperationStatus.SUCCESS,

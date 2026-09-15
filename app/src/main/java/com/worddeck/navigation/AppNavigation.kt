@@ -100,10 +100,11 @@ fun AppNavigation(
     clock: Clock,
     networkAvailable: Boolean?,
     onLogin: (email: String, password: String) -> Unit,
-    onRegister: (displayName: String, email: String, password: String) -> Unit,
+    onRegister: (displayName: String, email: String, password: String, confirmPassword: String) -> Unit,
     onCreateOfflineProfile: (displayName: String) -> Unit,
     onUpdateDisplayName: (displayName: String) -> Unit,
     onSync: () -> Unit,
+    onDownload: () -> Unit,
     onLogout: () -> Unit,
     onClearErrors: () -> Unit,
     modifier: Modifier = Modifier,
@@ -134,6 +135,7 @@ fun AppNavigation(
             user = currentUser,
             onUpdateDisplayName = onUpdateDisplayName,
             onSync = onSync,
+            onDownload = onDownload,
             onLogout = onLogout,
             modifier = modifier,
         )
@@ -144,7 +146,7 @@ fun AppNavigation(
 private fun AuthNavigation(
     uiState: AuthUiState,
     onLogin: (String, String) -> Unit,
-    onRegister: (String, String, String) -> Unit,
+    onRegister: (String, String, String, String) -> Unit,
     onClearErrors: () -> Unit,
     modifier: Modifier,
 ) {
@@ -188,6 +190,7 @@ private fun MainNavigation(
     user: User,
     onUpdateDisplayName: (String) -> Unit,
     onSync: () -> Unit,
+    onDownload: () -> Unit,
     onLogout: () -> Unit,
     modifier: Modifier,
 ) {
@@ -238,6 +241,7 @@ private fun MainNavigation(
                 error = uiState.error,
                 onUpdateDisplayName = onUpdateDisplayName,
                 onSync = onSync,
+                onDownload = onDownload,
                 onLogout = onLogout,
                 onBack = { navController.popBackStack() },
             )

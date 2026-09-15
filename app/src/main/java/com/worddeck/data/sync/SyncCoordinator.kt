@@ -2,6 +2,8 @@ package com.worddeck.data.sync
 
 import android.database.sqlite.SQLiteException
 import androidx.room.withTransaction
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import com.google.firebase.firestore.FirebaseFirestore
 import com.worddeck.common.AppError
 import com.worddeck.common.AppResult
@@ -43,42 +45,137 @@ class SyncCoordinator internal constructor(
     private val database: WordDeckDatabase,
     private val remoteStore: SyncRemoteStore,
 ) {
+    private val transferMutex = Mutex()
+
     suspend fun sync(
         localUserId: UserId,
         firebaseUid: UserId = localUserId,
-    ): AppResult<Unit> = try {
-        syncInternal(localUserId, firebaseUid)
-    } catch (_: SQLiteException) {
-        AppResult.Failure(AppError.Unavailable("synchronization"))
+    ): AppResult<Unit> = transferMutex.withLock {
+        try {
+            syncInternal(localUserId, firebaseUid)
+        } catch (_: SQLiteException) {
+            AppResult.Failure(AppError.Unavailable("synchronization"))
+        }
     }
 
     suspend fun forceUpload(
         localUserId: UserId,
         firebaseUid: UserId,
-    ): AppResult<Unit> = try {
-        val pendingData = when (val result = loadPendingData(localUserId, firebaseUid)) {
-            is AppResult.Success -> result.value
-            is AppResult.Failure -> return result
-        }
-        when (val result = remoteStore.forceUpload(firebaseUid.value, pendingData)) {
-            is AppResult.Success -> {
-                markUploadedDataAsSynced(pendingData, localUserId)
-                AppResult.Success(Unit)
+    ): AppResult<Unit> = transferMutex.withLock {
+        try {
+            val pendingData = when (val result = loadPendingData(localUserId, firebaseUid)) {
+                is AppResult.Success -> result.value
+                is AppResult.Failure -> return@withLock result
             }
-            is AppResult.Failure -> result
+            when (val result = remoteStore.forceUpload(firebaseUid.value, pendingData)) {
+                is AppResult.Success -> {
+                    markUploadedDataAsSynced(pendingData, localUserId)
+                    AppResult.Success(Unit)
+                }
+                is AppResult.Failure -> result
+            }
+        } catch (_: SQLiteException) {
+            AppResult.Failure(AppError.Unavailable("synchronization"))
         }
-    } catch (_: SQLiteException) {
-        AppResult.Failure(AppError.Unavailable("synchronization"))
     }
 
     /** Refreshes Room after a normal online login without uploading pending local changes. */
     suspend fun download(
         localUserId: UserId,
         firebaseUid: UserId = localUserId,
-    ): AppResult<Unit> = try {
-        downloadInternal(localUserId, firebaseUid)
-    } catch (_: SQLiteException) {
-        AppResult.Failure(AppError.Unavailable("synchronization"))
+    ): AppResult<Unit> = transferMutex.withLock {
+        try {
+            downloadInternal(localUserId, firebaseUid)
+        } catch (_: SQLiteException) {
+            AppResult.Failure(AppError.Unavailable("synchronization"))
+        }
+    }
+
+    /**
+     * Only the explicitly confirmed download discards pending local work.
+     * Login continues to use download(), which merges without discarding it.
+     */
+    suspend fun downloadAndReplace(
+        localUserId: UserId,
+        firebaseUid: UserId,
+    ): AppResult<Unit> = transferMutex.withLock {
+        val remoteData = when (val result = remoteStore.download(firebaseUid.value)) {
+            is AppResult.Success -> result.value
+            is AppResult.Failure -> return@withLock result
+        }
+        try {
+            database.withTransaction {
+                val data = when (val result = validateAndMapRemoteData(
+                    localUserId, firebaseUid, remoteData, replaceLocal = true,
+                )) {
+                    is AppResult.Success -> result.value
+                    is AppResult.Failure -> return@withTransaction result
+                }
+                val conflict = replacementConflict(localUserId, data)
+                if (conflict != null) return@withTransaction conflict
+
+                // Validation and collision checks finish before the first delete.
+                // A failed insert rolls back these deletes as well.
+                database.reviewEventDao().deleteByUser(localUserId.value)
+                database.reviewStateDao().deleteByUser(localUserId.value)
+                database.deckDao().deleteByOwner(localUserId.value)
+
+                val activeDecks = data.decks.filter { it.deletedAt == null }
+                val activeDeckIds = activeDecks.map { it.deck.id }.toSet()
+                val activeCards = data.flashcards.filter {
+                    it.deletedAt == null && it.flashcard.deckId in activeDeckIds
+                }
+                val activeCardIds = activeCards.map { it.flashcard.id }.toSet()
+                for (remote in activeDecks) {
+                    database.deckDao().save(remote.deck.toEntity(pendingSync = false))
+                }
+                for (remote in activeCards) {
+                    database.flashcardDao().save(remote.flashcard.toEntity(pendingSync = false))
+                }
+                for (remote in data.reviewStates) {
+                    if (remote.state.cardId in activeCardIds) {
+                        database.reviewStateDao().save(
+                            remote.state.toEntity(updatedAt = remote.updatedAt, pendingSync = false),
+                        )
+                    }
+                }
+                for (event in data.reviewEvents) {
+                    if (event.cardId in activeCardIds) {
+                        database.reviewEventDao().insert(event.toEntity(pendingSync = false))
+                    }
+                }
+                AppResult.Success(Unit)
+            }
+        } catch (_: SQLiteException) {
+            AppResult.Failure(AppError.Unavailable("synchronization"))
+        }
+    }
+
+    private suspend fun replacementConflict(
+        userId: UserId,
+        data: MappedSyncData,
+    ): AppResult.Failure? {
+        if (database.reviewStateDao().hasOtherUsersForOwner(userId.value) ||
+            database.reviewEventDao().hasOtherUsersForOwner(userId.value)
+        ) {
+            return ownerMismatch("local reviews")
+        }
+        for (remote in data.decks) {
+            val local = database.deckDao().findById(remote.deck.id.value)
+            if (local != null && local.ownerId != userId.value) return ownerMismatch("deck id")
+        }
+        val ownedCards = database.flashcardDao().findIdsByOwner(userId.value).toSet()
+        for (remote in data.flashcards) {
+            val id = remote.flashcard.id.value
+            if (database.flashcardDao().findById(id) != null && id !in ownedCards) {
+                return ownerMismatch("flashcard id")
+            }
+        }
+        for (event in data.reviewEvents) {
+            val local = database.reviewEventDao().findById(event.id.value)
+            if (local != null && local.userId != userId.value) return ownerMismatch("review event id")
+        }
+        return null
     }
 
     private suspend fun syncInternal(
@@ -188,7 +285,15 @@ class SyncCoordinator internal constructor(
         localUserId: UserId,
         firebaseUid: UserId,
         data: SyncData,
+        replaceLocal: Boolean = false,
     ): AppResult<MappedSyncData> {
+        if (data.decks.map { it.id }.distinct().size != data.decks.size ||
+            data.flashcards.map { it.id }.distinct().size != data.flashcards.size ||
+            data.reviewStates.map { it.cardId }.distinct().size != data.reviewStates.size ||
+            data.reviewEvents.map { it.id }.distinct().size != data.reviewEvents.size
+        ) {
+            return AppResult.Failure(AppError.Validation("remote data", "contains duplicate ids"))
+        }
         val decks = mutableListOf<RemoteDeck>()
         for (dto in data.decks) {
             if (dto.ownerId != firebaseUid.value) return ownerMismatch("deck")
@@ -201,7 +306,11 @@ class SyncCoordinator internal constructor(
             }
         }
 
-        val allowedDeckIds = database.deckDao().findIdsByOwner(localUserId.value).toMutableSet()
+        val allowedDeckIds = if (replaceLocal) {
+            mutableSetOf()
+        } else {
+            database.deckDao().findIdsByOwner(localUserId.value).toMutableSet()
+        }
         allowedDeckIds += decks.map { it.deck.id.value }
 
         val flashcards = mutableListOf<RemoteFlashcard>()
@@ -217,9 +326,11 @@ class SyncCoordinator internal constructor(
             }
         }
 
-        val allowedCardIds = database.flashcardDao()
-            .findIdsByOwner(localUserId.value)
-            .toMutableSet()
+        val allowedCardIds = if (replaceLocal) {
+            mutableSetOf()
+        } else {
+            database.flashcardDao().findIdsByOwner(localUserId.value).toMutableSet()
+        }
         allowedCardIds += flashcards.map { it.flashcard.id.value }
 
         val reviewStates = mutableListOf<RemoteReviewState>()
@@ -249,7 +360,7 @@ class SyncCoordinator internal constructor(
                     }
                     val localEvent = result.value.copy(userId = localUserId)
                     val existing = database.reviewEventDao().findById(dto.id)
-                    if (existing != null) {
+                    if (existing != null && !replaceLocal) {
                         when (val existingResult = existing.toLocalDomain()) {
                             is AppResult.Success -> if (existingResult.value != localEvent) {
                                 return reviewEventConflict(dto.id)

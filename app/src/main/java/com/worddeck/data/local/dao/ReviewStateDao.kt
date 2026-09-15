@@ -9,6 +9,22 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ReviewStateDao {
+    @Query("DELETE FROM review_states WHERE userId = :userId")
+    suspend fun deleteByUser(userId: String)
+
+    // Deleting a deck cascades into reviews; never erase another local user's progress.
+    @Query(
+        """
+        SELECT EXISTS(
+            SELECT 1 FROM review_states
+            INNER JOIN flashcards ON flashcards.id = review_states.cardId
+            INNER JOIN decks ON decks.id = flashcards.deckId
+            WHERE decks.ownerId = :ownerId AND review_states.userId != :ownerId
+        )
+        """,
+    )
+    suspend fun hasOtherUsersForOwner(ownerId: String): Boolean
+
     @Upsert
     suspend fun save(reviewState: ReviewStateEntity)
 

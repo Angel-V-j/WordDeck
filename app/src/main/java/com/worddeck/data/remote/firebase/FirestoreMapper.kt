@@ -16,6 +16,7 @@ import com.worddeck.domain.model.MasteryLevel
 import com.worddeck.domain.model.ReviewEvent
 import com.worddeck.domain.model.ReviewEventId
 import com.worddeck.domain.model.ReviewState
+import com.worddeck.domain.model.Sm2Rules
 import com.worddeck.domain.model.Sm2Quality
 import com.worddeck.domain.model.UserId
 
@@ -118,6 +119,11 @@ internal fun ReviewState.toFirestoreDto(
 )
 
 internal fun ReviewStateDto.toDomain(): AppResult<ReviewState> {
+    if (repetition < 0 || intervalDays < 0 || successfulReviewCount < 0 || failedReviewCount < 0 ||
+        !easeFactor.isFinite() || easeFactor < Sm2Rules.MINIMUM_EASE_FACTOR
+    ) {
+        return AppResult.Failure(AppError.Validation("review state", "invalid counters or SM-2 parameters"))
+    }
     val domainUserId = UserId.from(userId).valueOrReturnFailure { return it }
     val domainCardId = CardId.from(cardId).valueOrReturnFailure { return it }
     val domainLastQuality = if (lastQuality == null) {

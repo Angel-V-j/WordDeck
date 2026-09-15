@@ -42,6 +42,14 @@ fun WordDeckApp(appContainer: AppContainer) {
         SyncViewModel(
             authenticationRepository = appContainer.authenticationRepository,
             networkAvailability = appContainer.networkAvailability,
+            downloadCloudData = { user ->
+                val firebaseUid = user.firebaseUid
+                if (firebaseUid == null) {
+                    AppResult.Failure(AppError.Authentication.Unauthenticated)
+                } else {
+                    appContainer.syncCoordinator.downloadAndReplace(user.id, firebaseUid)
+                }
+            },
             uploadLocalChanges = { user ->
                 val firebaseUid = user.firebaseUid
                 if (firebaseUid == null) {
@@ -96,6 +104,7 @@ fun WordDeckContent(
                     onCreateOfflineProfile = authViewModel::createOfflineProfile,
                     onUpdateDisplayName = authViewModel::updateDisplayName,
                     onSync = syncViewModel::requestSync,
+                    onDownload = syncViewModel::requestDownload,
                     onLogout = authViewModel::logout,
                     onClearErrors = authViewModel::clearErrors,
                     modifier = Modifier.fillMaxSize(),
