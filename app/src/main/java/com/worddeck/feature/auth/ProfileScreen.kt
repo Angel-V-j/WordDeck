@@ -4,17 +4,20 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -28,6 +31,8 @@ import androidx.compose.ui.unit.dp
 import com.worddeck.R
 import com.worddeck.common.AppError
 import com.worddeck.domain.model.User
+import com.worddeck.ui.components.BackButton
+import com.worddeck.ui.components.WordDeckBrand
 
 @Composable
 fun ProfileScreen(
@@ -49,22 +54,22 @@ fun ProfileScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .imePadding()
+            .statusBarsPadding()
             .navigationBarsPadding()
+            .imePadding()
+            .verticalScroll(rememberScrollState())
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .widthIn(max = 480.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                .widthIn(max = 480.dp)
+                .fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            TextButton(onClick = onBack) {
-                Text(stringResource(R.string.back_action))
-            }
+            BackButton(onClick = onBack)
+            WordDeckBrand()
             Text(
                 text = stringResource(R.string.profile_title),
                 style = MaterialTheme.typography.headlineMedium,
@@ -83,9 +88,10 @@ fun ProfileScreen(
                 style = MaterialTheme.typography.bodyLarge,
             )
             OutlinedTextField(
+                shape = MaterialTheme.shapes.medium,
                 value = displayName,
                 onValueChange = { displayName = it },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
                 enabled = !isSubmitting,
                 singleLine = true,
                 label = { Text(stringResource(R.string.display_name_label)) },
@@ -94,23 +100,24 @@ fun ProfileScreen(
                     { Text(stringResource(R.string.display_name_error, reason)) }
                 },
             )
-            OutlinedButton(
+            Button(
                 onClick = { onUpdateDisplayName(displayName) },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
                 enabled = !isSubmitting,
             ) {
                 Text(stringResource(R.string.save_display_name_action))
             }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             OutlinedButton(
                 onClick = onSync,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
                 enabled = !isSubmitting,
             ) {
                 Text(stringResource(R.string.sync_data_action))
             }
             OutlinedButton(
                 onClick = onDownload,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
                 enabled = !isSubmitting && user.isLinked,
             ) {
                 Text(stringResource(R.string.download_data_action))
@@ -129,7 +136,7 @@ fun ProfileScreen(
             }
             OutlinedButton(
                 onClick = onLogout,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
                 enabled = !isSubmitting,
             ) {
                 Text(stringResource(R.string.logout_action))

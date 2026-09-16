@@ -152,4 +152,9 @@
     <string name="download_confirmation_message">Cloud data will replace the decks, cards and review progress stored on this device for this profile. Local changes that have not been uploaded will be lost. Items missing from the cloud will be removed from this device. Cloud data will not be changed.</string>
     <string name="confirm_download_action">Download and replace</string>
     <string name="download_success_message">Cloud data was downloaded successfully.</string>
+    <string name="home_action">Home</string>
+    <string name="category_filter_action">Category</string>
+    <string name="language_filter_action">Language</string>
+    <string name="all_categories">All categories</string>
+    <string name="all_languages">All languages</string>
 </resources>

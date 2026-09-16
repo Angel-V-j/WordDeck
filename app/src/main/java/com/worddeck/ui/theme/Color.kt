@@ -2,10 +2,9 @@ package com.worddeck.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-internal val WordDeckLightPrimary = Color(0xFF3F51B5)
-internal val WordDeckLightSecondary = Color(0xFF00695C)
-internal val WordDeckLightBackground = Color(0xFFFDFBFF)
-
-internal val WordDeckDarkPrimary = Color(0xFFBCC2FF)
-internal val WordDeckDarkSecondary = Color(0xFF80D5C7)
-internal val WordDeckDarkBackground = Color(0xFF1B1B1F)
+internal val WordDeckLightPrimary = Color(0xFF146B5A)
+internal val WordDeckLightSecondary = Color(0xFF486775)
+internal val WordDeckLightBackground = Color(0xFFF5F7F4)
+internal val WordDeckDarkPrimary = Color(0xFF8BD6BF)
+internal val WordDeckDarkSecondary = Color(0xFFA8CBDC)
+internal val WordDeckDarkBackground = Color(0xFF101916)

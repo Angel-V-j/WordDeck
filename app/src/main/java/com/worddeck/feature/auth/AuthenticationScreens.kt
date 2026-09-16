@@ -5,16 +5,18 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -23,8 +25,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -39,6 +41,7 @@ import com.worddeck.R
 import com.worddeck.common.AppError
 import com.worddeck.common.OperationStatus
 import com.worddeck.domain.model.User
+import com.worddeck.ui.components.WordDeckBrand
 
 @Composable
 fun LoginScreen(
@@ -400,19 +403,21 @@ private fun AuthenticationForm(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .imePadding()
+            .statusBarsPadding()
             .navigationBarsPadding()
+            .imePadding()
+            .verticalScroll(rememberScrollState())
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .widthIn(max = 480.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                .widthIn(max = 480.dp)
+                .fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            WordDeckBrand()
             Text(
                 text = title,
                 style = MaterialTheme.typography.headlineMedium,
@@ -440,6 +445,7 @@ private fun AuthenticationTextField(
     isPassword: Boolean = false,
 ) {
     OutlinedTextField(
+        shape = MaterialTheme.shapes.medium,
         value = value,
         onValueChange = onValueChange,
         modifier = Modifier.fillMaxWidth(),
@@ -470,7 +476,7 @@ private fun SubmitButton(
 ) {
     Button(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
         enabled = !isLoading,
     ) {
         if (isLoading) {

@@ -3,7 +3,8 @@ package com.worddeck.feature.decks
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -13,7 +14,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -34,6 +38,7 @@ import com.worddeck.R
 import com.worddeck.common.OperationStatus
 import com.worddeck.domain.model.CardId
 import com.worddeck.domain.model.Flashcard
+import com.worddeck.ui.components.EmptyState
 
 @Composable
 fun FlashcardSection(
@@ -44,6 +49,7 @@ fun FlashcardSection(
     onSearchQueryChange: (String) -> Unit,
     modifier: Modifier = Modifier,
     onOpenHistory: (CardId) -> Unit = {},
+    header: (@Composable () -> Unit)? = null,
 ) {
     var showEditor by rememberSaveable { mutableStateOf(false) }
     var editingFlashcardId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -104,89 +110,72 @@ fun FlashcardSection(
         )
     }
 
-    Column(
+    LazyColumn(
         modifier = modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(bottom = 16.dp),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = stringResource(R.string.cards_title),
-                style = MaterialTheme.typography.titleLarge,
-            )
-            TextButton(
-                onClick = {
-                    onClearOperation()
-                    editingFlashcardId = null
-                    showEditor = true
-                },
-                enabled = !isWorking,
+        if (header != null) item { header() }
+        item {
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Text(stringResource(R.string.add_card_action))
-            }
-        }
-
-        OutlinedTextField(
-            value = uiState.searchQuery,
-            onValueChange = onSearchQueryChange,
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text(stringResource(R.string.search_cards_label)) },
-            singleLine = true,
-        )
-
-        if (isWorking) {
-            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-        }
-        if (uiState.operationStatus == OperationStatus.ERROR && uiState.error != null) {
-            Text(
-                text = stringResource(R.string.card_operation_error),
-                color = MaterialTheme.colorScheme.error,
-            )
-        }
-
-        when (uiState.listStatus) {
-            OperationStatus.IDLE,
-            OperationStatus.LOADING,
-            -> Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
-            ) {
-                CircularProgressIndicator()
-            }
-            OperationStatus.ERROR -> Text(
-                text = stringResource(R.string.card_list_error),
-                color = MaterialTheme.colorScheme.error,
-            )
-            OperationStatus.SUCCESS -> if (uiState.cards.isEmpty()) {
                 Text(
-                    stringResource(
-                        if (uiState.searchQuery.isBlank()) {
-                            R.string.empty_cards
-                        } else {
-                            R.string.no_matching_cards
-                        },
-                    ),
+                    text = stringResource(R.string.cards_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.align(Alignment.CenterVertically),
                 )
+                FilledTonalButton(
+                    onClick = {
+                        onClearOperation()
+                        editingFlashcardId = null
+                        showEditor = true
+                    },
+                    enabled = !isWorking,
+                ) { Text(stringResource(R.string.add_card_action)) }
+            }
+        }
+        item {
+            OutlinedTextField(
+                shape = MaterialTheme.shapes.medium,
+                value = uiState.searchQuery,
+                onValueChange = onSearchQueryChange,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text(stringResource(R.string.search_cards_label)) },
+                singleLine = true,
+            )
+        }
+        if (isWorking) item { LinearProgressIndicator(modifier = Modifier.fillMaxWidth()) }
+        if (uiState.error != null && uiState.operationStatus == OperationStatus.ERROR) item {
+            Text(stringResource(R.string.card_operation_error), color = MaterialTheme.colorScheme.error)
+        }
+        when (uiState.listStatus) {
+            OperationStatus.IDLE, OperationStatus.LOADING -> item {
+                Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            }
+            OperationStatus.ERROR -> item {
+                Text(stringResource(R.string.card_list_error), color = MaterialTheme.colorScheme.error)
+            }
+            OperationStatus.SUCCESS -> if (uiState.cards.isEmpty()) {
+                item {
+                    EmptyState(stringResource(
+                        if (uiState.searchQuery.isBlank()) R.string.empty_cards else R.string.no_matching_cards,
+                    ))
+                }
             } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    items(uiState.cards, key = { it.id.value }) { flashcard ->
-                        FlashcardItem(
-                            flashcard = flashcard,
-                            onClick = {
-                                onClearOperation()
-                                editingFlashcardId = flashcard.id.value
-                                showEditor = true
-                            },
-                        )
-                    }
+                items(uiState.cards, key = { it.id.value }) { flashcard ->
+                    FlashcardItem(
+                        flashcard = flashcard,
+                        onClick = {
+                            onClearOperation()
+                            editingFlashcardId = flashcard.id.value
+                            showEditor = true
+                        },
+                    )
                 }
             }
         }
@@ -231,6 +220,7 @@ private fun FlashcardEditorDialog(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 OutlinedTextField(
+                    shape = MaterialTheme.shapes.medium,
                     value = front,
                     onValueChange = { front = it },
                     modifier = Modifier.fillMaxWidth(),
@@ -242,6 +232,7 @@ private fun FlashcardEditorDialog(
                     },
                 )
                 OutlinedTextField(
+                    shape = MaterialTheme.shapes.medium,
                     value = back,
                     onValueChange = { back = it },
                     modifier = Modifier.fillMaxWidth(),
@@ -253,6 +244,7 @@ private fun FlashcardEditorDialog(
                     },
                 )
                 OutlinedTextField(
+                    shape = MaterialTheme.shapes.medium,
                     value = example,
                     onValueChange = { example = it },
                     modifier = Modifier.fillMaxWidth(),
@@ -260,6 +252,7 @@ private fun FlashcardEditorDialog(
                     label = { Text(stringResource(R.string.card_example_label)) },
                 )
                 OutlinedTextField(
+                    shape = MaterialTheme.shapes.medium,
                     value = additionalInformation,
                     onValueChange = { additionalInformation = it },
                     modifier = Modifier.fillMaxWidth(),
@@ -279,7 +272,7 @@ private fun FlashcardEditorDialog(
             }
         },
         dismissButton = {
-            Row {
+            FlowRow {
                 if (flashcard != null) {
                     TextButton(
                         onClick = { onOpenHistory(flashcard.id) },
@@ -307,13 +300,17 @@ private fun FlashcardEditorDialog(
 
 @Composable
 private fun FlashcardItem(flashcard: Flashcard, onClick: () -> Unit) {
-    Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
+    Card(onClick = onClick, modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(flashcard.front.value, style = MaterialTheme.typography.titleMedium)
-            Text(flashcard.back.value, style = MaterialTheme.typography.bodyLarge)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant,
+                modifier = Modifier.padding(vertical = 6.dp))
+            Text(flashcard.back.value, style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
             flashcard.exampleSentence?.let {
                 Text(it, style = MaterialTheme.typography.bodySmall)
             }

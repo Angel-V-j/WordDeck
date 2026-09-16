@@ -15,7 +15,6 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -27,6 +26,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.worddeck.R
 import com.worddeck.common.OperationStatus
+import com.worddeck.ui.components.BackButton
 
 @Composable
 fun DeckEditorScreen(
@@ -61,9 +61,7 @@ fun DeckEditorScreen(
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        TextButton(onClick = onBack, enabled = !isSaving) {
-            Text(stringResource(R.string.back_action))
-        }
+        BackButton(onClick = onBack, enabled = !isSaving)
         Text(
             text = stringResource(
                 if (uiState.isEditing) R.string.edit_deck_title else R.string.create_deck_title,
@@ -71,6 +69,7 @@ fun DeckEditorScreen(
             style = MaterialTheme.typography.headlineMedium,
         )
         OutlinedTextField(
+            shape = MaterialTheme.shapes.medium,
             value = title,
             onValueChange = { title = it },
             modifier = Modifier.fillMaxWidth(),
@@ -83,6 +82,7 @@ fun DeckEditorScreen(
             },
         )
         OutlinedTextField(
+            shape = MaterialTheme.shapes.medium,
             value = sourceLanguage,
             onValueChange = { sourceLanguage = it },
             modifier = Modifier.fillMaxWidth(),
@@ -91,6 +91,7 @@ fun DeckEditorScreen(
             label = { Text(stringResource(R.string.source_language_label)) },
         )
         OutlinedTextField(
+            shape = MaterialTheme.shapes.medium,
             value = targetLanguage,
             onValueChange = { targetLanguage = it },
             modifier = Modifier.fillMaxWidth(),
@@ -99,6 +100,7 @@ fun DeckEditorScreen(
             label = { Text(stringResource(R.string.target_language_label)) },
         )
         OutlinedTextField(
+            shape = MaterialTheme.shapes.medium,
             value = category,
             onValueChange = { category = it },
             modifier = Modifier.fillMaxWidth(),

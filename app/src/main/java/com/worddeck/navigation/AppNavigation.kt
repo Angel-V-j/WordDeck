@@ -2,8 +2,12 @@ package com.worddeck.navigation
 
 import android.net.Uri
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -16,6 +20,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.NavType
@@ -214,308 +219,324 @@ private fun MainNavigation(
     val reviewFlashcard = remember(reviewRepository, clock, idGenerator) {
         ReviewFlashcardUseCase(reviewRepository, clock, idGenerator)
     }
-    NavHost(
-        navController = navController,
-        startDestination = AppDestination.HOME,
+    val backStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = backStackEntry?.destination?.route
+    Scaffold(
         modifier = modifier,
-    ) {
-        composable(AppDestination.HOME) {
-            HomeScreen(
-                uiState = homeUiState,
-                onDeckClick = { deckId ->
-                    navController.navigate(AppDestination.deckDetails(deckId.value))
-                },
-                onCreateDeck = { navController.navigate(AppDestination.CREATE_DECK) },
-                onOpenProfile = { navController.navigate(AppDestination.PROFILE) },
-                onOpenStatistics = { navController.navigate(AppDestination.STATISTICS) },
-                onSearchQueryChange = homeViewModel::updateSearchQuery,
-                onCategoryFilterChange = homeViewModel::updateCategoryFilter,
-                onLanguageFilterChange = homeViewModel::updateLanguageFilter,
-            )
-        }
-        composable(AppDestination.PROFILE) {
-            ProfileScreen(
-                user = user,
-                isSubmitting = uiState.submitStatus == OperationStatus.LOADING,
-                displayNameError = uiState.formErrors.displayName,
-                error = uiState.error,
-                onUpdateDisplayName = onUpdateDisplayName,
-                onSync = onSync,
-                onDownload = onDownload,
-                onLogout = onLogout,
-                onBack = { navController.popBackStack() },
-            )
-        }
-        composable(AppDestination.STATISTICS) {
-            StatisticsDestination(
-                key = "statistics-${user.id.value}",
-                title = stringResource(R.string.overall_statistics_title),
-                user = user,
-                deckId = null,
-                reviewRepository = reviewRepository,
-                clock = clock,
-                onBack = { navController.popBackStack() },
-            )
-        }
-        composable(
-            route = AppDestination.DECK_DETAILS,
-            arguments = listOf(navArgument("deckId") { type = NavType.StringType }),
-        ) { backStackEntry ->
-            val selectedId = backStackEntry.arguments?.getString("deckId")
-            val latestDeck = homeUiState.decks.firstOrNull { it.id.value == selectedId }
-            var deck by remember(selectedId) { mutableStateOf(latestDeck) }
-            LaunchedEffect(latestDeck) {
-                // Keep the last deck until this destination closes after a successful delete.
-                if (latestDeck != null) deck = latestDeck
-            }
-            val currentDeck = deck
-            if (currentDeck == null && homeUiState.status == OperationStatus.LOADING) {
-                LoadingScreen(Modifier)
-            } else if (currentDeck == null) {
-                MissingDeckDestination(onBack = { navController.popBackStack() })
-            } else {
-                val detailsViewModel = viewModel<DeckViewModel>(
-                    key = "details-${currentDeck.id.value}",
-                ) {
-                    DeckViewModel(
-                        deckRepository = deckRepository,
-                        ownerId = user.id,
-                        idGenerator = idGenerator,
-                        clock = clock,
-                        existingDeck = currentDeck,
-                    )
-                }
-                val detailsState by detailsViewModel.uiState.collectAsStateWithLifecycle()
-                val flashcardViewModel = viewModel<FlashcardViewModel>(
-                    key = "cards-${currentDeck.id.value}",
-                ) {
-                    FlashcardViewModel(
-                        flashcardRepository = flashcardRepository,
-                        deckId = currentDeck.id,
-                        idGenerator = idGenerator,
-                        clock = clock,
-                    )
-                }
-                val flashcardState by flashcardViewModel.uiState.collectAsStateWithLifecycle()
-                LaunchedEffect(detailsState.operationStatus) {
-                    if (detailsState.operationStatus == OperationStatus.SUCCESS) {
-                        navController.popBackStack()
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        bottomBar = {
+            if (MainTab.entries.any { it.route == currentRoute }) {
+                WordDeckNavigationBar(currentRoute = currentRoute, onSelect = { tab ->
+                    navController.navigate(tab.route) {
+                        popUpTo(AppDestination.HOME) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
                     }
-                }
-                DeckDetailsScreen(
-                    deck = currentDeck,
-                    uiState = detailsState,
-                    flashcardUiState = flashcardState,
-                    onEdit = {
-                        navController.navigate(AppDestination.editDeck(currentDeck.id.value))
+                })
+            }
+        },
+    ) { contentPadding ->
+        NavHost(
+            navController = navController,
+            startDestination = AppDestination.HOME,
+            modifier = Modifier.padding(contentPadding).consumeWindowInsets(contentPadding),
+        ) {
+            composable(AppDestination.HOME) {
+                HomeScreen(
+                    uiState = homeUiState,
+                    onDeckClick = { deckId ->
+                        navController.navigate(AppDestination.deckDetails(deckId.value))
                     },
-                    onDelete = detailsViewModel::delete,
-                    onSaveFlashcard = flashcardViewModel::save,
-                    onDeleteFlashcard = flashcardViewModel::delete,
-                    onClearFlashcardOperation = flashcardViewModel::clearOperation,
-                    onFlashcardSearchQueryChange = flashcardViewModel::updateSearchQuery,
-                    onOpenFlashcardHistory = { cardId ->
-                        navController.navigate(AppDestination.cardHistory(cardId.value))
-                    },
-                    onOpenStatistics = {
-                        navController.navigate(AppDestination.deckStatistics(currentDeck.id.value))
-                    },
-                    onBack = { navController.popBackStack() },
-                    onStartStudy = {
-                        navController.navigate(
-                            AppDestination.studyDeck(currentDeck.id.value, StudyMode.FLASHCARD),
-                        )
-                    },
-                    onStartTypedStudy = {
-                        navController.navigate(
-                            AppDestination.studyDeck(currentDeck.id.value, StudyMode.TYPED_ANSWER),
-                        )
-                    },
+                    onCreateDeck = { navController.navigate(AppDestination.CREATE_DECK) },
+                    onSearchQueryChange = homeViewModel::updateSearchQuery,
+                    onCategoryFilterChange = homeViewModel::updateCategoryFilter,
+                    onLanguageFilterChange = homeViewModel::updateLanguageFilter,
                 )
             }
-        }
-        composable(
-            route = AppDestination.STUDY_DECK,
-            arguments = listOf(
-                navArgument("deckId") { type = NavType.StringType },
-                navArgument(STUDY_MODE_ARGUMENT) {
-                    type = NavType.StringType
-                    defaultValue = StudyMode.FLASHCARD.name
-                },
-            ),
-        ) { backStackEntry ->
-            val selectedId = backStackEntry.arguments?.getString("deckId")
-            val selectedMode = backStackEntry.arguments
-                ?.getString(STUDY_MODE_ARGUMENT)
-                ?.let { value -> StudyMode.entries.firstOrNull { it.name == value } }
-                ?: StudyMode.FLASHCARD
-            val currentDeck = homeUiState.decks.firstOrNull { it.id.value == selectedId }
-
-            if (currentDeck == null) {
-                EmptyStudyDestination(onBack = { navController.popBackStack() })
-            } else {
-                val flashcardViewModel = viewModel<FlashcardViewModel>(
-                    key = "study-cards-${currentDeck.id.value}",
-                ) {
-                    FlashcardViewModel(
-                        flashcardRepository = flashcardRepository,
-                        deckId = currentDeck.id,
-                        idGenerator = idGenerator,
-                        clock = clock,
+            composable(AppDestination.PROFILE) {
+                ProfileScreen(
+                    user = user,
+                    isSubmitting = uiState.submitStatus == OperationStatus.LOADING,
+                    displayNameError = uiState.formErrors.displayName,
+                    error = uiState.error,
+                    onUpdateDisplayName = onUpdateDisplayName,
+                    onSync = onSync,
+                    onDownload = onDownload,
+                    onLogout = onLogout,
+                    onBack = { navController.popBackStack() },
+                )
+            }
+            composable(AppDestination.STATISTICS) {
+                StatisticsDestination(
+                    key = "statistics-${user.id.value}",
+                    title = stringResource(R.string.overall_statistics_title),
+                    user = user,
+                    deckId = null,
+                    reviewRepository = reviewRepository,
+                    clock = clock,
+                    onBack = { navController.popBackStack() },
+                )
+            }
+            composable(
+                route = AppDestination.DECK_DETAILS,
+                arguments = listOf(navArgument("deckId") { type = NavType.StringType }),
+            ) { backStackEntry ->
+                val selectedId = backStackEntry.arguments?.getString("deckId")
+                val latestDeck = homeUiState.decks.firstOrNull { it.id.value == selectedId }
+                var deck by remember(selectedId) { mutableStateOf(latestDeck) }
+                LaunchedEffect(latestDeck) {
+                    // Keep the last deck until this destination closes after a successful delete.
+                    if (latestDeck != null) deck = latestDeck
+                }
+                val currentDeck = deck
+                if (currentDeck == null && homeUiState.status == OperationStatus.LOADING) {
+                    LoadingScreen(Modifier)
+                } else if (currentDeck == null) {
+                    MissingDeckDestination(onBack = { navController.popBackStack() })
+                } else {
+                    val detailsViewModel = viewModel<DeckViewModel>(
+                        key = "details-${currentDeck.id.value}",
+                    ) {
+                        DeckViewModel(
+                            deckRepository = deckRepository,
+                            ownerId = user.id,
+                            idGenerator = idGenerator,
+                            clock = clock,
+                            existingDeck = currentDeck,
+                        )
+                    }
+                    val detailsState by detailsViewModel.uiState.collectAsStateWithLifecycle()
+                    val flashcardViewModel = viewModel<FlashcardViewModel>(
+                        key = "cards-${currentDeck.id.value}",
+                    ) {
+                        FlashcardViewModel(
+                            flashcardRepository = flashcardRepository,
+                            deckId = currentDeck.id,
+                            idGenerator = idGenerator,
+                            clock = clock,
+                        )
+                    }
+                    val flashcardState by flashcardViewModel.uiState.collectAsStateWithLifecycle()
+                    LaunchedEffect(detailsState.operationStatus) {
+                        if (detailsState.operationStatus == OperationStatus.SUCCESS) {
+                            navController.popBackStack()
+                        }
+                    }
+                    DeckDetailsScreen(
+                        deck = currentDeck,
+                        uiState = detailsState,
+                        flashcardUiState = flashcardState,
+                        onEdit = {
+                            navController.navigate(AppDestination.editDeck(currentDeck.id.value))
+                        },
+                        onDelete = detailsViewModel::delete,
+                        onSaveFlashcard = flashcardViewModel::save,
+                        onDeleteFlashcard = flashcardViewModel::delete,
+                        onClearFlashcardOperation = flashcardViewModel::clearOperation,
+                        onFlashcardSearchQueryChange = flashcardViewModel::updateSearchQuery,
+                        onOpenFlashcardHistory = { cardId ->
+                            navController.navigate(AppDestination.cardHistory(cardId.value))
+                        },
+                        onOpenStatistics = {
+                            navController.navigate(AppDestination.deckStatistics(currentDeck.id.value))
+                        },
+                        onBack = { navController.popBackStack() },
+                        onStartStudy = {
+                            navController.navigate(
+                                AppDestination.studyDeck(currentDeck.id.value, StudyMode.FLASHCARD),
+                            )
+                        },
+                        onStartTypedStudy = {
+                            navController.navigate(
+                                AppDestination.studyDeck(currentDeck.id.value, StudyMode.TYPED_ANSWER),
+                            )
+                        },
                     )
                 }
-                val flashcardState by flashcardViewModel.uiState.collectAsStateWithLifecycle()
+            }
+            composable(
+                route = AppDestination.STUDY_DECK,
+                arguments = listOf(
+                    navArgument("deckId") { type = NavType.StringType },
+                    navArgument(STUDY_MODE_ARGUMENT) {
+                        type = NavType.StringType
+                        defaultValue = StudyMode.FLASHCARD.name
+                    },
+                ),
+            ) { backStackEntry ->
+                val selectedId = backStackEntry.arguments?.getString("deckId")
+                val selectedMode = backStackEntry.arguments
+                    ?.getString(STUDY_MODE_ARGUMENT)
+                    ?.let { value -> StudyMode.entries.firstOrNull { it.name == value } }
+                    ?: StudyMode.FLASHCARD
+                val currentDeck = homeUiState.decks.firstOrNull { it.id.value == selectedId }
 
-                when (flashcardState.listStatus) {
-                    OperationStatus.IDLE,
-                    OperationStatus.LOADING,
-                    -> LoadingScreen(Modifier)
-                    OperationStatus.ERROR -> EmptyStudyDestination(
-                        onBack = { navController.popBackStack() },
-                    )
-                    OperationStatus.SUCCESS -> when (val states = reviewStatesResult) {
-                        null -> LoadingScreen(Modifier)
-                        is AppResult.Failure -> EmptyStudyDestination(
+                if (currentDeck == null) {
+                    EmptyStudyDestination(onBack = { navController.popBackStack() })
+                } else {
+                    val flashcardViewModel = viewModel<FlashcardViewModel>(
+                        key = "study-cards-${currentDeck.id.value}",
+                    ) {
+                        FlashcardViewModel(
+                            flashcardRepository = flashcardRepository,
+                            deckId = currentDeck.id,
+                            idGenerator = idGenerator,
+                            clock = clock,
+                        )
+                    }
+                    val flashcardState by flashcardViewModel.uiState.collectAsStateWithLifecycle()
+
+                    when (flashcardState.listStatus) {
+                        OperationStatus.IDLE,
+                        OperationStatus.LOADING,
+                        -> LoadingScreen(Modifier)
+                        OperationStatus.ERROR -> EmptyStudyDestination(
                             onBack = { navController.popBackStack() },
                         )
-                        is AppResult.Success -> {
-                            val startedAt = remember(currentDeck.id.value) { clock.now() }
-                            val session = remember(
-                                currentDeck.id,
-                                flashcardState.cards,
-                                states.value,
-                                startedAt,
-                            ) {
-                                startStudySession(
-                                    userId = user.id,
-                                    deck = currentDeck,
-                                    flashcards = flashcardState.cards,
-                                    reviewStates = states.value,
-                                    startedAt = startedAt,
-                                )
-                            }
-                            val studyViewModel = viewModel<StudyViewModel>(
-                                key = "study-${currentDeck.id.value}-${selectedMode.name}-${startedAt.epochMilliseconds}",
-                            ) {
-                                StudyViewModel(
-                                    session = session,
-                                    currentUserId = user.id,
-                                    reviewFlashcard = reviewFlashcard,
-                                    mode = selectedMode,
-                                )
-                            }
-                            val studyState by studyViewModel.uiState.collectAsStateWithLifecycle()
-
-                            StudyScreen(
-                                uiState = studyState,
-                                onRevealAnswer = studyViewModel::revealAnswer,
-                                onTypedAnswerChange = studyViewModel::updateTypedAnswer,
-                                onSubmitTypedAnswer = studyViewModel::submitTypedAnswer,
-                                onRate = studyViewModel::rate,
+                        OperationStatus.SUCCESS -> when (val states = reviewStatesResult) {
+                            null -> LoadingScreen(Modifier)
+                            is AppResult.Failure -> EmptyStudyDestination(
                                 onBack = { navController.popBackStack() },
                             )
+                            is AppResult.Success -> {
+                                val startedAt = remember(currentDeck.id.value) { clock.now() }
+                                val session = remember(
+                                    currentDeck.id,
+                                    flashcardState.cards,
+                                    states.value,
+                                    startedAt,
+                                ) {
+                                    startStudySession(
+                                        userId = user.id,
+                                        deck = currentDeck,
+                                        flashcards = flashcardState.cards,
+                                        reviewStates = states.value,
+                                        startedAt = startedAt,
+                                    )
+                                }
+                                val studyViewModel = viewModel<StudyViewModel>(
+                                    key = "study-${currentDeck.id.value}-${selectedMode.name}-${startedAt.epochMilliseconds}",
+                                ) {
+                                    StudyViewModel(
+                                        session = session,
+                                        currentUserId = user.id,
+                                        reviewFlashcard = reviewFlashcard,
+                                        mode = selectedMode,
+                                    )
+                                }
+                                val studyState by studyViewModel.uiState.collectAsStateWithLifecycle()
+
+                                StudyScreen(
+                                    uiState = studyState,
+                                    onRevealAnswer = studyViewModel::revealAnswer,
+                                    onTypedAnswerChange = studyViewModel::updateTypedAnswer,
+                                    onSubmitTypedAnswer = studyViewModel::submitTypedAnswer,
+                                    onRate = studyViewModel::rate,
+                                    onBack = { navController.popBackStack() },
+                                )
+                            }
                         }
                     }
                 }
             }
-        }
-        composable(
-            route = AppDestination.CARD_HISTORY,
-            arguments = listOf(navArgument("cardId") { type = NavType.StringType }),
-        ) { backStackEntry ->
-            val rawCardId = backStackEntry.arguments?.getString("cardId").orEmpty()
-            when (val cardId = CardId.from(rawCardId)) {
-                is AppResult.Failure -> ReviewHistoryScreen(
-                    history = cardId,
-                    onBack = { navController.popBackStack() },
-                )
-                is AppResult.Success -> {
-                    var history by remember(user.id, cardId.value) {
-                        mutableStateOf<AppResult<List<ReviewEvent>>?>(null)
-                    }
-                    LaunchedEffect(user.id, cardId.value, reviewRepository) {
-                        reviewRepository.observeHistory(user.id, cardId.value).collect { result ->
-                            history = result
+            composable(
+                route = AppDestination.CARD_HISTORY,
+                arguments = listOf(navArgument("cardId") { type = NavType.StringType }),
+            ) { backStackEntry ->
+                val rawCardId = backStackEntry.arguments?.getString("cardId").orEmpty()
+                when (val cardId = CardId.from(rawCardId)) {
+                    is AppResult.Failure -> ReviewHistoryScreen(
+                        history = cardId,
+                        onBack = { navController.popBackStack() },
+                    )
+                    is AppResult.Success -> {
+                        var history by remember(user.id, cardId.value) {
+                            mutableStateOf<AppResult<List<ReviewEvent>>?>(null)
                         }
+                        LaunchedEffect(user.id, cardId.value, reviewRepository) {
+                            reviewRepository.observeHistory(user.id, cardId.value).collect { result ->
+                                history = result
+                            }
+                        }
+                        ReviewHistoryScreen(
+                            history = history,
+                            onBack = { navController.popBackStack() },
+                        )
                     }
-                    ReviewHistoryScreen(
-                        history = history,
-                        onBack = { navController.popBackStack() },
-                    )
                 }
             }
-        }
-        composable(
-            route = AppDestination.DECK_STATISTICS,
-            arguments = listOf(navArgument("deckId") { type = NavType.StringType }),
-        ) { backStackEntry ->
-            val rawDeckId = backStackEntry.arguments?.getString("deckId").orEmpty()
-            when (val deckId = DeckId.from(rawDeckId)) {
-                is AppResult.Failure -> StatisticsScreen(
-                    title = stringResource(R.string.deck_statistics_fallback_title),
-                    uiState = StatisticsUiState(
-                        status = OperationStatus.ERROR,
-                        error = deckId.error,
-                    ),
-                    onBack = { navController.popBackStack() },
-                )
-                is AppResult.Success -> {
-                    val deckTitle = homeUiState.decks
-                        .firstOrNull { it.id == deckId.value }
-                        ?.title
-                        ?.value
-                    StatisticsDestination(
-                        key = "statistics-${user.id.value}-${deckId.value.value}",
-                        title = if (deckTitle == null) {
-                            stringResource(R.string.deck_statistics_fallback_title)
-                        } else {
-                            stringResource(R.string.deck_statistics_title, deckTitle)
-                        },
-                        user = user,
-                        deckId = deckId.value,
-                        reviewRepository = reviewRepository,
-                        clock = clock,
+            composable(
+                route = AppDestination.DECK_STATISTICS,
+                arguments = listOf(navArgument("deckId") { type = NavType.StringType }),
+            ) { backStackEntry ->
+                val rawDeckId = backStackEntry.arguments?.getString("deckId").orEmpty()
+                when (val deckId = DeckId.from(rawDeckId)) {
+                    is AppResult.Failure -> StatisticsScreen(
+                        title = stringResource(R.string.deck_statistics_fallback_title),
+                        uiState = StatisticsUiState(
+                            status = OperationStatus.ERROR,
+                            error = deckId.error,
+                        ),
                         onBack = { navController.popBackStack() },
                     )
+                    is AppResult.Success -> {
+                        val deckTitle = homeUiState.decks
+                            .firstOrNull { it.id == deckId.value }
+                            ?.title
+                            ?.value
+                        StatisticsDestination(
+                            key = "statistics-${user.id.value}-${deckId.value.value}",
+                            title = if (deckTitle == null) {
+                                stringResource(R.string.deck_statistics_fallback_title)
+                            } else {
+                                stringResource(R.string.deck_statistics_title, deckTitle)
+                            },
+                            user = user,
+                            deckId = deckId.value,
+                            reviewRepository = reviewRepository,
+                            clock = clock,
+                            onBack = { navController.popBackStack() },
+                        )
+                    }
                 }
             }
-        }
-        composable(AppDestination.CREATE_DECK) {
-            DeckEditorDestination(
-                key = "create-${user.id.value}",
-                existingDeck = null,
-                user = user,
-                deckRepository = deckRepository,
-                idGenerator = idGenerator,
-                clock = clock,
-                onBack = { navController.popBackStack() },
-            )
-        }
-        composable(
-            route = AppDestination.EDIT_DECK,
-            arguments = listOf(navArgument("deckId") { type = NavType.StringType }),
-        ) { backStackEntry ->
-            val selectedId = backStackEntry.arguments?.getString("deckId")
-            val latestDeck = homeUiState.decks.firstOrNull { it.id.value == selectedId }
-            var deck by remember(selectedId) { mutableStateOf(latestDeck) }
-            LaunchedEffect(latestDeck) {
-                if (latestDeck != null) deck = latestDeck
-            }
-            val currentDeck = deck
-            if (currentDeck == null && homeUiState.status == OperationStatus.LOADING) {
-                LoadingScreen(Modifier)
-            } else if (currentDeck == null) {
-                MissingDeckDestination(onBack = { navController.popBackStack() })
-            } else {
+            composable(AppDestination.CREATE_DECK) {
                 DeckEditorDestination(
-                    key = "edit-${currentDeck.id.value}",
-                    existingDeck = currentDeck,
+                    key = "create-${user.id.value}",
+                    existingDeck = null,
                     user = user,
                     deckRepository = deckRepository,
                     idGenerator = idGenerator,
                     clock = clock,
                     onBack = { navController.popBackStack() },
                 )
+            }
+            composable(
+                route = AppDestination.EDIT_DECK,
+                arguments = listOf(navArgument("deckId") { type = NavType.StringType }),
+            ) { backStackEntry ->
+                val selectedId = backStackEntry.arguments?.getString("deckId")
+                val latestDeck = homeUiState.decks.firstOrNull { it.id.value == selectedId }
+                var deck by remember(selectedId) { mutableStateOf(latestDeck) }
+                LaunchedEffect(latestDeck) {
+                    if (latestDeck != null) deck = latestDeck
+                }
+                val currentDeck = deck
+                if (currentDeck == null && homeUiState.status == OperationStatus.LOADING) {
+                    LoadingScreen(Modifier)
+                } else if (currentDeck == null) {
+                    MissingDeckDestination(onBack = { navController.popBackStack() })
+                } else {
+                    DeckEditorDestination(
+                        key = "edit-${currentDeck.id.value}",
+                        existingDeck = currentDeck,
+                        user = user,
+                        deckRepository = deckRepository,
+                        idGenerator = idGenerator,
+                        clock = clock,
+                        onBack = { navController.popBackStack() },
+                    )
+                }
             }
         }
     }

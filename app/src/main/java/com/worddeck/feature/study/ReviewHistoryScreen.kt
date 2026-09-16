@@ -10,10 +10,10 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -23,6 +23,8 @@ import com.worddeck.R
 import com.worddeck.common.AppResult
 import com.worddeck.common.Timestamp
 import com.worddeck.domain.model.ReviewEvent
+import com.worddeck.ui.components.BackButton
+import com.worddeck.ui.components.EmptyState
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -41,9 +43,7 @@ fun ReviewHistoryScreen(
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        TextButton(onClick = onBack) {
-            Text(stringResource(R.string.back_action))
-        }
+        BackButton(onClick = onBack)
         Text(
             text = stringResource(R.string.review_history_title),
             style = MaterialTheme.typography.headlineMedium,
@@ -56,7 +56,7 @@ fun ReviewHistoryScreen(
                 color = MaterialTheme.colorScheme.error,
             )
             is AppResult.Success -> if (history.value.isEmpty()) {
-                Text(stringResource(R.string.review_history_empty))
+                EmptyState(stringResource(R.string.review_history_empty))
             } else {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(history.value, key = { it.id.value }) { event ->
@@ -70,7 +70,8 @@ fun ReviewHistoryScreen(
 
 @Composable
 private fun ReviewHistoryItem(event: ReviewEvent) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -79,7 +80,8 @@ private fun ReviewHistoryItem(event: ReviewEvent) {
                 text = qualityLabel(event.quality.value),
                 style = MaterialTheme.typography.titleMedium,
             )
-            Text(formatReviewTime(event.reviewedAt))
+            Text(formatReviewTime(event.reviewedAt), color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium)
         }
     }
 }

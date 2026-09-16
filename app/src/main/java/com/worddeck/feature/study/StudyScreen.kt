@@ -2,21 +2,28 @@ package com.worddeck.feature.study
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -24,6 +31,8 @@ import androidx.compose.ui.unit.dp
 import com.worddeck.R
 import com.worddeck.common.OperationStatus
 import com.worddeck.domain.model.ReviewRating
+import com.worddeck.ui.components.BackButton
+import com.worddeck.ui.components.EmptyState
 
 @Composable
 fun StudyScreen(
@@ -35,18 +44,25 @@ fun StudyScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val focusManager = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
+    LaunchedEffect(uiState.stage) {
+        if (uiState.stage == StudyStage.ANSWER_REVEALED) {
+            focusManager.clearFocus()
+            keyboard?.hide()
+        }
+    }
     Column(
         modifier = modifier
             .fillMaxSize()
             .statusBarsPadding()
             .navigationBarsPadding()
+            .imePadding()
             .verticalScroll(rememberScrollState())
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        TextButton(onClick = onBack) {
-            Text(stringResource(R.string.back_action))
-        }
+        BackButton(onClick = onBack)
         Text(
             text = stringResource(R.string.study_title),
             style = MaterialTheme.typography.headlineMedium,
@@ -55,7 +71,7 @@ fun StudyScreen(
         val currentCard = uiState.currentCard
         if (currentCard == null) {
             if (uiState.totalCards == 0) {
-                Text(stringResource(R.string.no_due_cards))
+                EmptyState(stringResource(R.string.no_due_cards))
             } else {
                 Text(
                     text = stringResource(R.string.study_complete),
@@ -74,7 +90,12 @@ fun StudyScreen(
             ),
         )
 
-        Card(modifier = Modifier.fillMaxWidth()) {
+        LinearProgressIndicator(
+            progress = { (uiState.position.toFloat() / uiState.totalCards).coerceIn(0f, 1f) },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Card(modifier = Modifier.fillMaxWidth().heightIn(min = 156.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
             Column(
                 modifier = Modifier.padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -116,6 +137,7 @@ fun StudyScreen(
                 }
             } else {
                 OutlinedTextField(
+                    shape = MaterialTheme.shapes.medium,
                     value = uiState.typedAnswer,
                     onValueChange = onTypedAnswerChange,
                     label = { Text(stringResource(R.string.typed_answer_label)) },
@@ -160,10 +182,14 @@ fun StudyScreen(
             }
             Text(stringResource(R.string.rate_answer_prompt))
             val ratingEnabled = uiState.reviewStatus != OperationStatus.LOADING
-            RatingButton(R.string.rating_again, ReviewRating.AGAIN, ratingEnabled, onRate)
-            RatingButton(R.string.rating_hard, ReviewRating.HARD, ratingEnabled, onRate)
-            RatingButton(R.string.rating_good, ReviewRating.GOOD, ratingEnabled, onRate)
-            RatingButton(R.string.rating_easy, ReviewRating.EASY, ratingEnabled, onRate)
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                RatingButton(R.string.rating_again, ReviewRating.AGAIN, ratingEnabled, onRate, Modifier.weight(1f))
+                RatingButton(R.string.rating_hard, ReviewRating.HARD, ratingEnabled, onRate, Modifier.weight(1f))
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                RatingButton(R.string.rating_good, ReviewRating.GOOD, ratingEnabled, onRate, Modifier.weight(1f))
+                RatingButton(R.string.rating_easy, ReviewRating.EASY, ratingEnabled, onRate, Modifier.weight(1f))
+            }
         }
     }
 }
@@ -211,11 +237,20 @@ private fun RatingButton(
     rating: ReviewRating,
     enabled: Boolean,
     onRate: (ReviewRating) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    OutlinedButton(
+    val colors = MaterialTheme.colorScheme
+    val (container, content) = when (rating) {
+        ReviewRating.AGAIN -> colors.errorContainer to colors.onErrorContainer
+        ReviewRating.HARD -> colors.tertiaryContainer to colors.onTertiaryContainer
+        ReviewRating.GOOD -> colors.secondaryContainer to colors.onSecondaryContainer
+        ReviewRating.EASY -> colors.primaryContainer to colors.onPrimaryContainer
+    }
+    Button(
+        colors = ButtonDefaults.buttonColors(containerColor = container, contentColor = content),
         onClick = { onRate(rating) },
         enabled = enabled,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.heightIn(min = 52.dp),
     ) {
         Text(stringResource(label))
     }

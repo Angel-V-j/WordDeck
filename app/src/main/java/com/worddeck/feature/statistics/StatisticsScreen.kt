@@ -9,11 +9,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -22,6 +23,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.worddeck.R
 import com.worddeck.common.OperationStatus
+import com.worddeck.ui.components.BackButton
+import com.worddeck.ui.components.EmptyState
 
 @Composable
 fun StatisticsScreen(
@@ -39,9 +42,7 @@ fun StatisticsScreen(
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        TextButton(onClick = onBack) {
-            Text(stringResource(R.string.back_action))
-        }
+        BackButton(onClick = onBack)
         Text(title, style = MaterialTheme.typography.headlineMedium)
 
         when (uiState.status) {
@@ -61,7 +62,7 @@ fun StatisticsScreen(
 private fun StatisticsContent(uiState: StatisticsUiState) {
     val progress = uiState.progress
     if (progress.totalCards == 0) {
-        Text(stringResource(R.string.statistics_empty))
+        EmptyState(stringResource(R.string.statistics_empty))
         return
     }
 
@@ -100,9 +101,15 @@ private fun PeriodItem(labelResource: Int, count: Int) {
 @Composable
 private fun ProgressItem(labelResource: Int, count: Int, total: Int) {
     val label = stringResource(labelResource)
-    Text(stringResource(R.string.statistics_count, label, count))
-    LinearProgressIndicator(
-        progress = { (count.toFloat() / total).coerceIn(0f, 1f) },
-        modifier = Modifier.fillMaxWidth(),
-    )
+    Card(modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(stringResource(R.string.statistics_count, label, count),
+                style = MaterialTheme.typography.titleMedium)
+            LinearProgressIndicator(
+                progress = { (count.toFloat() / total).coerceIn(0f, 1f) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
 }
