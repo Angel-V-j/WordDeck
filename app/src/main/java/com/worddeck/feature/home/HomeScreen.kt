@@ -105,7 +105,7 @@ fun HomeScreen(
             )
         }
         item {
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp),
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(5.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Button(onClick = onCreateDeck, contentPadding = PaddingValues(horizontal = 12.dp)) {
                     Icon(painterResource(R.drawable.ic_add), contentDescription = null,
